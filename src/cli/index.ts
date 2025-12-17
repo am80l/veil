@@ -41,3 +41,6 @@ program
 export function run(): void {
 	program.parse(process.argv);
 }
+
+// Always run the CLI if this file is executed directly
+run();
