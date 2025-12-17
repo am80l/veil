@@ -9,6 +9,7 @@ import type {
 	BlockDetails,
 	BlockReason,
 	DirectoryResult,
+	FileEngine,
 	FileResult,
 	FileRule,
 	VeilBlocked,
@@ -19,7 +20,7 @@ import type {
 /**
  * Create a file rules engine
  */
-export function createFileEngine(rules: FileRule[], injectors?: VeilInjectors) {
+export function createFileEngine(rules: FileRule[], injectors?: VeilInjectors): FileEngine {
 	/**
 	 * Check if a file path is accessible
 	 */
@@ -57,7 +58,7 @@ export function createFileEngine(rules: FileRule[], injectors?: VeilInjectors) {
 					"file_hidden_by_policy",
 					policyRef,
 					action,
-					rule.replacement ?? "hidden_by_policy"
+					rule.replacement ?? "hidden_by_policy",
 				);
 
 			case "rewrite":
@@ -105,7 +106,7 @@ export function createFileEngine(rules: FileRule[], injectors?: VeilInjectors) {
 					"directory_hidden_by_policy",
 					policyRef,
 					action,
-					rule.replacement ?? "hidden_by_policy"
+					rule.replacement ?? "hidden_by_policy",
 				);
 
 			case "rewrite":
@@ -150,7 +151,7 @@ function createBlockedResult(
 	reason: BlockReason,
 	policy: string,
 	action: "deny" | "mask" | "rewrite",
-	replacement?: string
+	replacement?: string,
 ): VeilBlocked {
 	const details: BlockDetails = {
 		target,

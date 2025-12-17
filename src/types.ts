@@ -282,3 +282,35 @@ export interface Veil {
 	 */
 	clearInterceptedCalls(): void;
 }
+
+// ============================================================================
+// Engine Interfaces
+// ============================================================================
+
+/**
+ * File engine interface
+ */
+export interface FileEngine {
+	checkFile(path: string): FileResult | VeilSuccess<true>;
+	checkDirectory(path: string): DirectoryResult | VeilSuccess<true>;
+	filterPaths(paths: string[]): string[];
+	isVisible(path: string): boolean;
+}
+
+/**
+ * Environment engine interface
+ */
+export interface EnvEngine {
+	getEnv(key: string): EnvResult;
+	getVisibleEnv(): Record<string, string>;
+	isVisible(key: string): boolean;
+}
+
+/**
+ * CLI engine interface
+ */
+export interface CliEngine {
+	checkCommand(command: string): CliResult;
+	isAllowed(command: string): boolean;
+	transform(command: string): string | null;
+}

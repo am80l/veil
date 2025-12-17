@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { createEnvEngine } from "./env-engine";
 import type { EnvRule } from "./types";
 
@@ -96,7 +96,7 @@ describe("env-engine", () => {
 		it("returns undefined when masking non-existent variable", () => {
 			const maskRules: EnvRule[] = [{ match: /^MISSING_/, action: "mask" }];
 			const eng = createEnvEngine(maskRules);
-			
+
 			const result = eng.getEnv("MISSING_VAR");
 			expect(result.ok).toBe(true);
 			if (result.ok) {
@@ -185,12 +185,9 @@ describe("env-engine", () => {
 		});
 
 		it("falls back to rules when injector returns null", () => {
-			const engine = createEnvEngine(
-				[{ match: "DATABASE_URL", action: "deny" }],
-				{
-					env: () => null,
-				}
-			);
+			const engine = createEnvEngine([{ match: "DATABASE_URL", action: "deny" }], {
+				env: () => null,
+			});
 
 			const result = engine.getEnv("DATABASE_URL");
 			expect(result.ok).toBe(false);

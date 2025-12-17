@@ -1,15 +1,16 @@
 {
   "name": "veil",
   "version": "0.1.0",
+  "type": "module",
   "description": "A TypeScript library for selective context access, visibility control & safety enforcement for LLMs",
-  "main": "dist/index.js",
-  "module": "dist/index.mjs",
+  "main": "dist/index.cjs",
+  "module": "dist/index.js",
   "types": "dist/index.d.ts",
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
-      "import": "./dist/index.mjs",
-      "require": "./dist/index.js"
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
     }
   },
   "files": [
@@ -22,9 +23,21 @@
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
     "typecheck": "tsc --noEmit",
-    "lint": "biome lint ./src",
+    "lint": "biome lint ./src && eslint ./src",
+    "lint:biome": "biome lint ./src",
+    "lint:eslint": "eslint ./src",
+    "lint:fix": "biome lint --write ./src && eslint ./src --fix",
     "format": "biome format --write ./src",
-    "prepublishOnly": "npm run build"
+    "format:check": "biome format ./src",
+    "check": "biome check ./src && npm run typecheck",
+    "prepublishOnly": "npm run build",
+    "prepare": "husky"
+  },
+  "lint-staged": {
+    "*.ts": [
+      "biome check --write",
+      "eslint --fix"
+    ]
   },
   "keywords": [
     "llm",
@@ -48,10 +61,17 @@
   "sideEffects": false,
   "devDependencies": {
     "@biomejs/biome": "^1.9.0",
+    "@eslint/js": "9.39.2",
     "@types/node": "^22.0.0",
+    "@typescript-eslint/eslint-plugin": "8.50.0",
+    "@typescript-eslint/parser": "8.50.0",
     "@vitest/coverage-v8": "2.1.9",
+    "eslint": "9.39.2",
+    "husky": "9.1.7",
+    "lint-staged": "16.2.7",
     "tsup": "^8.3.0",
     "typescript": "^5.6.0",
+    "typescript-eslint": "8.50.0",
     "vitest": "^2.1.0"
   },
   "engines": {

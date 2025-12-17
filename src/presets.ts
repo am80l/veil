@@ -4,7 +4,7 @@
  * Common rule configurations for typical use cases
  */
 
-import type { CliRule, EnvRule, FileRule, VeilConfig } from "./types";
+import type { CliRule, EnvRule, FileRule, VeilConfig, VeilInjectors } from "./types";
 
 // ============================================================================
 // File Rule Presets
@@ -69,7 +69,7 @@ export const SENSITIVE_ENV_VARS: EnvRule[] = [
  */
 export const DANGEROUS_COMMANDS: CliRule[] = [
 	{
-		match: /^rm\s+-rf\s+[\/~]/,
+		match: /^rm\s+-rf\s+[/~]/,
 		action: "deny",
 		reason: "Recursive delete from root or home",
 		safeAlternatives: ["rm -i", "trash", "mv to ~/.trash/"],
@@ -182,12 +182,8 @@ export const PRESET_MINIMAL: VeilConfig = {
 		{ match: ".env", action: "deny" },
 		{ match: /secrets?/i, action: "deny" },
 	],
-	envRules: [
-		{ match: /PASSWORD|SECRET|TOKEN|KEY/i, action: "mask" },
-	],
-	cliRules: [
-		{ match: /^rm\s+-rf/, action: "deny", safeAlternatives: ["rm -i"] },
-	],
+	envRules: [{ match: /PASSWORD|SECRET|TOKEN|KEY/i, action: "mask" }],
+	cliRules: [{ match: /^rm\s+-rf/, action: "deny", safeAlternatives: ["rm -i"] }],
 };
 
 /**
@@ -226,12 +222,13 @@ export function mergeConfigs(...configs: VeilConfig[]): VeilConfig {
 	};
 
 	// Merge injectors if any config has them
-	const injectorConfigs = configs.filter((c) => c.injectors);
+	const injectorConfigs = configs.filter((c) => c.injectors !== undefined);
 	if (injectorConfigs.length > 0) {
-		result.injectors = injectorConfigs.reduce(
-			(acc, c) => ({ ...acc, ...c.injectors }),
-			{} as VeilConfig["injectors"],
-		);
+		const mergedInjectors: VeilInjectors = {};
+		for (const config of injectorConfigs) {
+			Object.assign(mergedInjectors, config.injectors);
+		}
+		result.injectors = mergedInjectors;
 	}
 
 	return result;

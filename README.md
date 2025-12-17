@@ -241,12 +241,12 @@ const customVeil = createVeil(mergeConfigs(
 
 ### Available Presets
 
-| Preset | Description |
-| ------ | ----------- |
-| `PRESET_RECOMMENDED` | Balanced defaults: blocks node_modules, .git, .env, secrets, and dangerous commands |
-| `PRESET_STRICT` | Maximum security: masks all env vars by default, blocks sudo, docker run |
-| `PRESET_MINIMAL` | Essential protection only: just .env files, passwords, and rm -rf |
-| `PRESET_CI` | CI/CD safe: allows CI env vars (GITHUB_*, GITLAB_*, etc.), blocks publish/force-push |
+| Preset               | Description                                                                          |
+| -------------------- | ------------------------------------------------------------------------------------ |
+| `PRESET_RECOMMENDED` | Balanced defaults: blocks node_modules, .git, .env, secrets, and dangerous commands  |
+| `PRESET_STRICT`      | Maximum security: masks all env vars by default, blocks sudo, docker run             |
+| `PRESET_MINIMAL`     | Essential protection only: just .env files, passwords, and rm -rf                    |
+| `PRESET_CI`          | CI/CD safe: allows CI env vars (GITHUB_*, GITLAB_*, etc.), blocks publish/force-push |
 
 ### Individual Rule Sets
 

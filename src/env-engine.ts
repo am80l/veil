@@ -7,6 +7,7 @@
 import { applyMask, evaluateRules } from "./matching";
 import type {
 	BlockDetails,
+	EnvEngine,
 	EnvResult,
 	EnvRule,
 	VeilBlocked,
@@ -20,7 +21,7 @@ declare const process: { env: Record<string, string | undefined> };
 /**
  * Create an environment rules engine
  */
-export function createEnvEngine(rules: EnvRule[], injectors?: VeilInjectors) {
+export function createEnvEngine(rules: EnvRule[], injectors?: VeilInjectors): EnvEngine {
 	/**
 	 * Get an environment variable with rules applied
 	 */
@@ -137,7 +138,7 @@ function createEnvBlockedResult(
 	target: string,
 	reason: "env_denied_by_policy" | "env_masked_by_policy",
 	policy: string,
-	action: "deny" | "mask"
+	action: "deny" | "mask",
 ): VeilBlocked {
 	const details: BlockDetails = {
 		target,

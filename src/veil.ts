@@ -94,7 +94,7 @@ export function createVeil(config: VeilConfig = {}): Veil {
 		type: InterceptRecord["type"],
 		target: string,
 		action: RuleAction,
-		policy: string
+		policy: string,
 	): void {
 		interceptedCalls.push({
 			type,
@@ -182,8 +182,11 @@ export function createVeil(config: VeilConfig = {}): Veil {
 			fileRules: [...(policy.fileRules ?? []), ...fileRules],
 			envRules: [...(policy.envRules ?? []), ...envRules],
 			cliRules: [...(policy.cliRules ?? []), ...cliRules],
-			injectors,
 		};
+
+		if (injectors !== undefined) {
+			scopedConfig.injectors = injectors;
+		}
 
 		return createVeil(scopedConfig);
 	}

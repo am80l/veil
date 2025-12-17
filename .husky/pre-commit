@@ -1,0 +1,7 @@
+#!/usr/bin/env sh
+
+# Run lint-staged for staged files
+npx lint-staged
+
+# Run type check
+npm run typecheck

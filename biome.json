@@ -6,7 +6,24 @@
   "linter": {
     "enabled": true,
     "rules": {
-      "recommended": true
+      "recommended": true,
+      "correctness": {
+        "noUnusedVariables": "error",
+        "noUnusedImports": "error",
+        "useExhaustiveDependencies": "warn"
+      },
+      "suspicious": {
+        "noExplicitAny": "error",
+        "noConfusingVoidType": "error"
+      },
+      "style": {
+        "noNonNullAssertion": "warn",
+        "useConst": "error",
+        "noVar": "error"
+      },
+      "complexity": {
+        "noForEach": "off"
+      }
     }
   },
   "formatter": {
@@ -19,5 +36,8 @@
       "quoteStyle": "double",
       "semicolons": "always"
     }
+  },
+  "files": {
+    "ignore": ["dist", "coverage", "node_modules"]
   }
 }

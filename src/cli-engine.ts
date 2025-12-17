@@ -5,12 +5,12 @@
  */
 
 import { evaluateRules } from "./matching";
-import type { CliResult, CliRule } from "./types";
+import type { CliEngine, CliResult, CliRule } from "./types";
 
 /**
  * Create a CLI rules engine
  */
-export function createCliEngine(rules: CliRule[]) {
+export function createCliEngine(rules: CliRule[]): CliEngine {
 	/**
 	 * Check and potentially transform a CLI command
 	 */
@@ -34,15 +34,19 @@ export function createCliEngine(rules: CliRule[]) {
 					command,
 				};
 
-			case "deny":
-				return {
+			case "deny": {
+				const denyResult: CliResult = {
 					ok: false,
 					blocked: true,
 					type: "cli",
 					reason: "command_denied_by_policy",
 					command,
-					safeAlternatives: rule.safeAlternatives,
 				};
+				if (rule.safeAlternatives) {
+					denyResult.safeAlternatives = rule.safeAlternatives;
+				}
+				return denyResult;
+			}
 
 			case "rewrite":
 				return {
@@ -50,16 +54,20 @@ export function createCliEngine(rules: CliRule[]) {
 					command: rule.replacement ?? command,
 				};
 
-			case "mask":
+			case "mask": {
 				// For CLI, mask is treated like deny with a placeholder
-				return {
+				const maskResult: CliResult = {
 					ok: false,
 					blocked: true,
 					type: "cli",
 					reason: "command_denied_by_policy",
 					command,
-					safeAlternatives: rule.safeAlternatives,
 				};
+				if (rule.safeAlternatives) {
+					maskResult.safeAlternatives = rule.safeAlternatives;
+				}
+				return maskResult;
+			}
 		}
 	}
 
