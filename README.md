@@ -376,13 +376,13 @@ registerModalRules();
 
 // Passive mode: Allow wrangler with helpful context
 const veil = createVeil(buildConfigFromRules({
-  'cloudflare/wrangler': { mode: 'passive' },
-  'container/docker': { mode: 'passive' }
+  'cli/wrangler': { mode: 'passive' },
+  'cli/docker': { mode: 'passive' }
 }));
 
 // Strict mode: Block terraform with custom message
 const strictVeil = createVeil(buildConfigFromRules({
-  'infra/terraform': { 
+  'cli/terraform': { 
     mode: 'strict', 
     message: 'Terraform is blocked in this environment' 
   }
@@ -391,22 +391,22 @@ const strictVeil = createVeil(buildConfigFromRules({
 
 ### Available Modal Rules
 
-| Rule ID               | Default Mode | Description                 |
-| --------------------- | ------------ | --------------------------- |
-| `cloudflare/wrangler` | passive      | Cloudflare Workers CLI      |
-| `container/docker`    | passive      | Docker container management |
-| `infra/terraform`     | passive      | Infrastructure as Code      |
-| `infra/kubectl`       | passive      | Kubernetes CLI              |
-| `cloud/aws-cli`       | passive      | AWS Command Line Interface  |
-| `tooling/npm`         | passive      | Node.js package manager     |
-| `tooling/git`         | passive      | Version control operations  |
+| Rule ID            | Default Mode | Description                 |
+| ------------------ | ------------ | --------------------------- |
+| `cli/wrangler`     | passive      | Cloudflare Workers CLI      |
+| `cli/docker`       | passive      | Docker container management |
+| `cli/terraform`    | passive      | Infrastructure as Code      |
+| `cli/kubectl`      | passive      | Kubernetes CLI              |
+| `cli/aws`          | passive      | AWS Command Line Interface  |
+| `cli/npm`          | passive      | Node.js package manager     |
+| `cli/git`          | passive      | Version control operations  |
 
 ### Strict vs Passive Examples
 
 ```typescript
 // PASSIVE MODE: Injects context about the tool
 const passiveConfig = buildConfigFromRules({
-  'cloudflare/wrangler': { mode: 'passive' }
+  'cli/wrangler': { mode: 'passive' }
 });
 
 const veil = createVeil(passiveConfig);
@@ -416,7 +416,7 @@ const result = veil.checkCommand('wrangler deploy');
 
 // STRICT MODE: Blocks the command entirely
 const strictConfig = buildConfigFromRules({
-  'cloudflare/wrangler': { 
+  'cli/wrangler': { 
     mode: 'strict',
     message: 'Wrangler is disabled. Use the Cloudflare dashboard instead.'
   }
@@ -432,7 +432,7 @@ const blocked = strictVeil.checkCommand('wrangler deploy');
 
 ```typescript
 const customPassive = buildConfigFromRules({
-  'container/docker': { 
+  'cli/docker': { 
     mode: 'passive',
     context: `Docker is available with the following constraints:
       - Use 'docker-compose' for local development
@@ -447,8 +447,8 @@ const customPassive = buildConfigFromRules({
 ```typescript
 const mixedConfig = buildConfigFromRules({
   // Modal rules with modes
-  'cloudflare/wrangler': { mode: 'passive' },
-  'container/docker': { mode: 'strict', message: 'Docker is not available' },
+  'cli/wrangler': { mode: 'passive' },
+  'cli/docker': { mode: 'strict', message: 'Docker is not available' },
   
   // Static rules (standard ESLint-style)
   'env/mask-aws': 'error',
@@ -503,6 +503,262 @@ cli/no-curl-pipe-bash      # Block curl | bash
 cli/no-credential-echo     # Block echo $PASSWORD
 ```
 
+## Fluent Builder API
+
+For a more ergonomic configuration experience, use the `VeilBuilder`:
+
+```typescript
+import { veilBuilder } from 'veil';
+
+// Build a Veil instance with fluent API
+const veil = veilBuilder()
+  .usePack('security:recommended')
+  .usePack('platform:linux')
+  .useModal('cli/wrangler', { mode: 'passive' })
+  .useModal('cli/docker', { mode: 'strict', message: 'Docker is disabled' })
+  .denyFile('secrets/')
+  .denyFile(/\.pem$/)
+  .denyEnv(/^AWS_/)
+  .denyCommand(/^rm -rf/)
+  .build();
+
+// Use it normally
+const result = veil.checkFile('/path/to/secrets/api.json');
+```
+
+### Builder Methods
+
+| Method                        | Description                         |
+| ----------------------------- | ----------------------------------- |
+| `usePack(pack)`               | Add a rule pack                     |
+| `useModal(ruleId, options)`   | Configure a modal rule              |
+| `denyFile(pattern)`           | Add a deny rule for files           |
+| `denyEnv(pattern)`            | Add a deny rule for env vars        |
+| `denyCommand(pattern)`        | Add a deny rule for CLI commands    |
+| `maskEnv(pattern)`            | Add a mask rule for env vars        |
+| `allowFile(pattern)`          | Add an allow rule for files         |
+| `allowEnv(pattern)`           | Add an allow rule for env vars      |
+| `allowCommand(pattern)`       | Add an allow rule for CLI commands  |
+| `withInjectors(injectors)`    | Add custom content injectors        |
+| `build()`                     | Build the Veil instance             |
+
+## Plugin System
+
+Extend Veil with plugins for logging, metrics, or custom behavior:
+
+```typescript
+import { 
+  createVeil, 
+  PluginManager, 
+  createLoggingPlugin, 
+  createMetricsPlugin 
+} from 'veil';
+
+// Create plugin manager
+const plugins = new PluginManager();
+plugins.use(createLoggingPlugin());
+plugins.use(createMetricsPlugin());
+
+// Create veil with plugins wrapping operations
+const veil = createVeil({ /* config */ });
+
+// Use plugins with operations
+const fileContext = { path: '/path/to/file.txt', operation: 'checkFile' as const };
+
+// Before hook can short-circuit
+const shortCircuit = plugins.runBeforeFileCheck(fileContext);
+if (shortCircuit) {
+  console.log('Plugin handled:', shortCircuit);
+} else {
+  const result = veil.checkFile('/path/to/file.txt');
+  // After hook for logging/metrics
+  plugins.runAfterFileCheck(fileContext, result);
+}
+
+// Get metrics from metrics plugin
+const metricsPlugin = createMetricsPlugin();
+plugins.use(metricsPlugin);
+// ... run some checks ...
+console.log(metricsPlugin.getMetrics());
+// { files: 5, env: 2, cli: 1, blocked: 2 }
+```
+
+### Custom Plugins
+
+```typescript
+import type { VeilPlugin } from 'veil';
+
+const myPlugin: VeilPlugin = {
+  name: 'my-custom-plugin',
+  
+  // Called before file check - can short-circuit
+  beforeFileCheck(ctx) {
+    console.log(`Checking file: ${ctx.path}`);
+    
+    // Return a result to short-circuit
+    if (ctx.path.includes('ultra-secret')) {
+      return {
+        ok: false,
+        blocked: true,
+        reason: 'file_hidden_by_policy',
+        details: { target: ctx.path, policy: 'plugin', action: 'deny' }
+      };
+    }
+    
+    // Return undefined to continue normal processing
+    return undefined;
+  },
+  
+  // Called after file check - can modify result
+  afterFileCheck(ctx, result) {
+    if (!result.ok) {
+      console.log(`Blocked: ${ctx.path}`);
+    }
+    return result; // Must return the result
+  },
+  
+  beforeEnvCheck(ctx) { /* ... */ },
+  afterEnvCheck(ctx, result) { return result; },
+  beforeCliCheck(ctx) { /* ... */ },
+  afterCliCheck(ctx, result) { return result; },
+  
+  // Called when plugin is installed
+  install(config) {
+    console.log('Plugin installed with config:', config);
+  }
+};
+```
+
+## Advanced Audit System
+
+The `AuditManager` provides comprehensive audit trails with event emitters and storage adapters:
+
+```typescript
+import { AuditManager, MemoryStorageAdapter } from 'veil';
+
+// Create audit manager with storage
+const storage = new MemoryStorageAdapter({ maxRecords: 10000 });
+const audit = new AuditManager(storage);
+
+// Subscribe to events by action type
+audit.on('deny', (event) => {
+  console.log(`BLOCKED: ${event.record.target}`);
+});
+
+audit.on('mask', (event) => {
+  console.log(`Masked: ${event.record.target}`);
+});
+
+// Subscribe to all events
+audit.on('*', (event) => {
+  console.log(`[${event.type}] ${event.record.target}`);
+});
+
+// Record events (type, target, action, policy)
+audit.record('file', '/path/to/secrets.json', 'deny', 'fileRules[1]');
+audit.record('env', 'AWS_SECRET', 'mask', 'envRules[0]');
+
+// Query records
+const blocked = await audit.query({ action: 'deny' });
+const recentFiles = await audit.query({ 
+  type: 'file', 
+  since: Date.now() - 60000 // Last minute
+});
+
+// Cleanup
+await audit.clear();
+```
+
+### Custom Storage Adapters
+
+```typescript
+import type { AuditStorageAdapter, InterceptRecord } from 'veil';
+import * as fs from 'fs/promises';
+
+// Example: File-based storage
+const fileStorage: AuditStorageAdapter = {
+  store: async (record) => {
+    await fs.appendFile('audit.log', JSON.stringify(record) + '\n');
+  },
+  
+  getAll: async () => {
+    const data = await fs.readFile('audit.log', 'utf-8');
+    return data.split('\n').filter(Boolean).map(JSON.parse);
+  },
+  
+  clear: async () => {
+    await fs.writeFile('audit.log', '');
+  },
+  
+  // Optional: Custom query implementation
+  query: async (criteria) => {
+    const all = await fileStorage.getAll();
+    // Filter by criteria...
+    return all as InterceptRecord[];
+  },
+};
+
+const audit = new AuditManager(fileStorage);
+```
+
+### Built-in Storage Adapters
+
+| Adapter                       | Description                               |
+| ----------------------------- | ----------------------------------------- |
+| `MemoryStorageAdapter`        | In-memory storage with max records limit  |
+| `createConsoleStorageAdapter` | Logs to console and stores in memory      |
+
+## Enhanced Guard Function
+
+The `guard()` function executes operations with tracking and supports detailed result mode:
+
+```typescript
+const veil = createVeil({
+  fileRules: [{ match: 'secret', action: 'deny' }],
+});
+
+// Simple mode: just get the result
+const result = await veil.guard(() => {
+  veil.checkFile('/path/to/secret.txt');
+  return 'done';
+});
+
+// Detailed mode: get execution metrics
+const detailed = await veil.guard(
+  () => {
+    veil.checkFile('/path/to/secret.txt');
+    veil.checkFile('/path/to/public.txt');
+    return 'processed';
+  },
+  { detailed: true }
+);
+
+console.log(detailed);
+// {
+//   value: 'processed',
+//   success: true,
+//   duration: 5,
+//   intercepts: [
+//     { type: 'file', target: '/path/to/secret.txt', action: 'deny', ... }
+//   ]
+// }
+
+// Error handling in detailed mode
+const errorResult = await veil.guard(
+  () => { throw new Error('Something failed'); },
+  { detailed: true }
+);
+
+console.log(errorResult);
+// {
+//   value: undefined,
+//   success: false,
+//   error: Error('Something failed'),
+//   duration: 1,
+//   intercepts: []
+// }
+```
+
 ### Rules API Reference
 
 | Function                                 | Description                                |
@@ -520,19 +776,20 @@ cli/no-credential-echo     # Block echo $PASSWORD
 
 ### Veil Instance Methods
 
-| Method                    | Description                             |
-| ------------------------- | --------------------------------------- |
-| `checkFile(path)`         | Check if a file is accessible           |
-| `checkDirectory(path)`    | Check if a directory is accessible      |
-| `filterPaths(paths)`      | Filter a list of paths by visibility    |
-| `getEnv(key)`             | Get an env variable with rules applied  |
-| `getVisibleEnv()`         | Get all visible env variables           |
-| `checkCommand(cmd)`       | Check/transform a CLI command           |
-| `guard(fn)`               | Execute operation in guarded context    |
-| `scope(policy)`           | Create scoped instance with extra rules |
-| `getContext()`            | Get current visibility context          |
-| `getInterceptedCalls()`   | Get audit log of blocked operations     |
-| `clearInterceptedCalls()` | Clear the audit log                     |
+| Method                             | Description                                |
+| ---------------------------------- | ------------------------------------------ |
+| `checkFile(path)`                  | Check if a file is accessible              |
+| `checkDirectory(path)`             | Check if a directory is accessible         |
+| `filterPaths(paths)`               | Filter a list of paths by visibility       |
+| `getEnv(key)`                      | Get an env variable with rules applied     |
+| `getVisibleEnv()`                  | Get all visible env variables              |
+| `checkCommand(cmd)`                | Check/transform a CLI command              |
+| `guard(fn)`                        | Execute operation in guarded context       |
+| `guard(fn, { detailed: true })`    | Execute with detailed tracking (GuardResult) |
+| `scope(policy)`                    | Create scoped instance with extra rules    |
+| `getContext()`                     | Get current visibility context             |
+| `getInterceptedCalls()`            | Get audit log of blocked operations        |
+| `clearInterceptedCalls()`          | Clear the audit log                        |
 
 ## Use Cases
 

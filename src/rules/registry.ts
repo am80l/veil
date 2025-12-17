@@ -20,30 +20,71 @@ import type {
 const ruleRegistry = new Map<string, VeilRule>();
 
 /**
- * Track if platform rules are registered
+ * Track if all rules are registered
  */
-let platformRulesRegistered = false;
+let allRulesRegistered = false;
 
 /**
  * Clear the registry (for testing)
  */
 export function clearRegistry(): void {
 	ruleRegistry.clear();
-	platformRulesRegistered = false;
+	allRulesRegistered = false;
 }
 
 /**
- * Check if platform rules are registered
+ * Check if all rules are registered
  */
-export function arePlatformRulesRegistered(): boolean {
-	return platformRulesRegistered;
+export function areRulesRegistered(): boolean {
+	return allRulesRegistered;
 }
 
 /**
- * Mark platform rules as registered
+ * Registration callbacks for lazy initialization
+ */
+let platformRegistrar: (() => void) | undefined;
+let modalRegistrar: (() => void) | undefined;
+
+/**
+ * Set the platform rules registrar (called by platform.ts on import)
+ */
+export function setPlatformRegistrar(registrar: () => void): void {
+	platformRegistrar = registrar;
+}
+
+/**
+ * Set the modal rules registrar (called by modal.ts on import)
+ */
+export function setModalRegistrar(registrar: () => void): void {
+	modalRegistrar = registrar;
+}
+
+/**
+ * Ensure all built-in rules are registered (auto-registration)
+ * This is called automatically when needed - users don't need to call this
+ */
+export function ensureRulesRegistered(): void {
+	if (allRulesRegistered) {
+		return;
+	}
+	// Call registrars if they've been set
+	platformRegistrar?.();
+	modalRegistrar?.();
+	allRulesRegistered = true;
+}
+
+/**
+ * @deprecated Use ensureRulesRegistered() or let Veil auto-register
  */
 export function markPlatformRulesRegistered(): void {
-	platformRulesRegistered = true;
+	allRulesRegistered = true;
+}
+
+/**
+ * @deprecated Use areRulesRegistered() instead
+ */
+export function arePlatformRulesRegistered(): boolean {
+	return allRulesRegistered;
 }
 
 /**
@@ -67,30 +108,34 @@ export function registerRules(rules: VeilRule[]): void {
 }
 
 /**
- * Get a rule by ID
+ * Get a rule by ID (auto-registers if needed)
  */
 export function getRule(id: string): VeilRule | undefined {
+	ensureRulesRegistered();
 	return ruleRegistry.get(id);
 }
 
 /**
- * Get all registered rules
+ * Get all registered rules (auto-registers if needed)
  */
 export function getAllRules(): VeilRule[] {
+	ensureRulesRegistered();
 	return [...ruleRegistry.values()];
 }
 
 /**
- * Get rules by category
+ * Get rules by category (auto-registers if needed)
  */
 export function getRulesByCategory(category: string): VeilRule[] {
+	ensureRulesRegistered();
 	return getAllRules().filter((r) => r.category === category);
 }
 
 /**
- * Get rules by platform
+ * Get rules by platform (auto-registers if needed)
  */
 export function getRulesByPlatform(platform: Platform): VeilRule[] {
+	ensureRulesRegistered();
 	return getAllRules().filter((r) => r.platforms.includes(platform) || r.platforms.includes("all"));
 }
 

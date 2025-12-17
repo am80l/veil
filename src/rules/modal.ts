@@ -6,7 +6,7 @@
  * - passive: Allow access but inject additional context/guidance
  */
 
-import { registerRules } from "./registry";
+import { registerRules, setModalRegistrar } from "./registry";
 import type { ModalRuleOptions, RuleMode, VeilRule } from "./types";
 
 // ============================================================================
@@ -55,7 +55,7 @@ Please consult the deployment documentation or contact the infrastructure team.
 `.trim();
 
 export const wranglerRule: VeilRule = {
-	id: "cloudflare/wrangler",
+	id: "cli/wrangler",
 	description: "Control access to Cloudflare Wrangler CLI with context injection",
 	category: "tooling",
 	platforms: ["all"],
@@ -128,7 +128,7 @@ Please use the provided development scripts instead.
 `.trim();
 
 export const dockerRule: VeilRule = {
-	id: "container/docker",
+	id: "cli/docker",
 	description: "Control access to Docker CLI with context injection",
 	category: "tooling",
 	platforms: ["all"],
@@ -209,7 +209,7 @@ Please submit a PR to the infrastructure repository.
 `.trim();
 
 export const terraformRule: VeilRule = {
-	id: "infra/terraform",
+	id: "cli/terraform",
 	description: "Control access to Terraform CLI with context injection",
 	category: "tooling",
 	platforms: ["all"],
@@ -284,7 +284,7 @@ Please submit changes through the deployment repository.
 `.trim();
 
 export const kubectlRule: VeilRule = {
-	id: "infra/kubectl",
+	id: "cli/kubectl",
 	description: "Control access to kubectl CLI with context injection",
 	category: "tooling",
 	platforms: ["all"],
@@ -347,7 +347,7 @@ Please use the provided scripts or CI/CD pipelines.
 `.trim();
 
 export const awsCliRule: VeilRule = {
-	id: "cloud/aws-cli",
+	id: "cli/aws",
 	description: "Control access to AWS CLI with context injection",
 	category: "tooling",
 	platforms: ["all"],
@@ -407,7 +407,7 @@ Please add dependencies via PR.
 `.trim();
 
 export const npmRule: VeilRule = {
-	id: "tooling/npm",
+	id: "cli/npm",
 	description: "Control access to npm/pnpm/yarn with context injection",
 	category: "tooling",
 	platforms: ["all"],
@@ -471,7 +471,7 @@ Please use the standard PR workflow.
 `.trim();
 
 export const gitRule: VeilRule = {
-	id: "tooling/git",
+	id: "cli/git",
 	description: "Control access to git operations with context injection",
 	category: "tooling",
 	platforms: ["all"],
@@ -534,13 +534,13 @@ export function registerModalRules(): void {
  */
 export function getDefaultContext(ruleId: string): string | undefined {
 	const contexts: Record<string, string> = {
-		"cloudflare/wrangler": WRANGLER_DEFAULT_CONTEXT,
-		"container/docker": DOCKER_DEFAULT_CONTEXT,
-		"infra/terraform": TERRAFORM_DEFAULT_CONTEXT,
-		"infra/kubectl": KUBECTL_DEFAULT_CONTEXT,
-		"cloud/aws-cli": AWS_DEFAULT_CONTEXT,
-		"tooling/npm": NPM_DEFAULT_CONTEXT,
-		"tooling/git": GIT_DEFAULT_CONTEXT,
+		"cli/wrangler": WRANGLER_DEFAULT_CONTEXT,
+		"cli/docker": DOCKER_DEFAULT_CONTEXT,
+		"cli/terraform": TERRAFORM_DEFAULT_CONTEXT,
+		"cli/kubectl": KUBECTL_DEFAULT_CONTEXT,
+		"cli/aws": AWS_DEFAULT_CONTEXT,
+		"cli/npm": NPM_DEFAULT_CONTEXT,
+		"cli/git": GIT_DEFAULT_CONTEXT,
 	};
 	return contexts[ruleId];
 }
@@ -550,13 +550,16 @@ export function getDefaultContext(ruleId: string): string | undefined {
  */
 export function getDefaultStrictMessage(ruleId: string): string | undefined {
 	const messages: Record<string, string> = {
-		"cloudflare/wrangler": WRANGLER_STRICT_MESSAGE,
-		"container/docker": DOCKER_STRICT_MESSAGE,
-		"infra/terraform": TERRAFORM_STRICT_MESSAGE,
-		"infra/kubectl": KUBECTL_STRICT_MESSAGE,
-		"cloud/aws-cli": AWS_STRICT_MESSAGE,
-		"tooling/npm": NPM_STRICT_MESSAGE,
-		"tooling/git": GIT_STRICT_MESSAGE,
+		"cli/wrangler": WRANGLER_STRICT_MESSAGE,
+		"cli/docker": DOCKER_STRICT_MESSAGE,
+		"cli/terraform": TERRAFORM_STRICT_MESSAGE,
+		"cli/kubectl": KUBECTL_STRICT_MESSAGE,
+		"cli/aws": AWS_STRICT_MESSAGE,
+		"cli/npm": NPM_STRICT_MESSAGE,
+		"cli/git": GIT_STRICT_MESSAGE,
 	};
 	return messages[ruleId];
 }
+
+// Auto-register when module loads
+setModalRegistrar(registerModalRules);

@@ -12,6 +12,7 @@ import type {
 	DirectoryResult,
 	EnvResult,
 	FileResult,
+	GuardResult,
 	InterceptRecord,
 	RuleAction,
 	ScopedPolicy,
@@ -164,13 +165,46 @@ export function createVeil(config: VeilConfig = {}): Veil {
 	}
 
 	/**
-	 * Execute a guarded operation
+	 * Execute a guarded operation with optional detailed tracking
 	 */
-	async function guard<T>(operation: () => T | Promise<T>): Promise<T> {
-		// In a real implementation, this would proxy filesystem/env/CLI access
-		// For now, we just execute the operation in a context where
-		// the engines are available
-		return await operation();
+	async function guard<T>(
+		operation: () => T | Promise<T>,
+		options?: { detailed?: boolean },
+	): Promise<T | GuardResult<T>> {
+		const startTime = Date.now();
+		const interceptsBefore = interceptedCalls.length;
+
+		try {
+			const value = await operation();
+			const duration = Date.now() - startTime;
+			const intercepts = interceptedCalls.slice(interceptsBefore);
+
+			if (options?.detailed) {
+				return {
+					value,
+					intercepts,
+					duration,
+					success: true,
+				};
+			}
+
+			return value;
+		} catch (error) {
+			const duration = Date.now() - startTime;
+			const intercepts = interceptedCalls.slice(interceptsBefore);
+
+			if (options?.detailed) {
+				return {
+					value: undefined as T,
+					intercepts,
+					duration,
+					success: false,
+					error: error instanceof Error ? error : new Error(String(error)),
+				};
+			}
+
+			throw error;
+		}
 	}
 
 	/**

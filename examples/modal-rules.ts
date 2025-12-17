@@ -30,7 +30,7 @@ console.log("📋 Example 1: Wrangler in PASSIVE mode");
 console.log("   AI can run wrangler commands but gets context about environments\n");
 
 const passiveRules: RulesConfig = {
-	"cloudflare/wrangler": ["error", { mode: "passive" }],
+	"cli/wrangler": ["error", { mode: "passive" }],
 };
 
 const veilPassive = createVeil(buildConfigFromRules(passiveRules));
@@ -41,9 +41,7 @@ console.log(`   Allowed: ${wranglerResult.ok}`);
 if (wranglerResult.ok) {
 	// In passive mode, the context/reason contains helpful information
 	console.log("\n   📖 Injected Context:");
-	console.log(
-		`   ${getDefaultContext("cloudflare/wrangler")?.split("\n").slice(0, 5).join("\n   ")}`,
-	);
+	console.log(`   ${getDefaultContext("cli/wrangler")?.split("\n").slice(0, 5).join("\n   ")}`);
 	console.log("   ...");
 }
 
@@ -57,7 +55,7 @@ console.log("🚫 Example 2: Wrangler in STRICT mode");
 console.log("   AI cannot run wrangler commands at all\n");
 
 const strictRules: RulesConfig = {
-	"cloudflare/wrangler": ["error", { mode: "strict" }],
+	"cli/wrangler": ["error", { mode: "strict" }],
 };
 
 const veilStrict = createVeil(buildConfigFromRules(strictRules));
@@ -69,7 +67,7 @@ if (!blockedResult.ok) {
 	console.log(`   Reason: ${blockedResult.reason}`);
 	console.log("\n   📖 Default Strict Message:");
 	console.log(
-		`   ${getDefaultStrictMessage("cloudflare/wrangler")?.split("\n").slice(0, 3).join("\n   ")}`,
+		`   ${getDefaultStrictMessage("cli/wrangler")?.split("\n").slice(0, 3).join("\n   ")}`,
 	);
 }
 
@@ -81,7 +79,7 @@ console.log(`\n${"=".repeat(60)}\n`);
 console.log("✨ Example 3: Custom messages for your project\n");
 
 const customRules: RulesConfig = {
-	"cloudflare/wrangler": [
+	"cli/wrangler": [
 		"error",
 		{
 			mode: "strict",
@@ -117,7 +115,7 @@ console.log(`\n${"=".repeat(60)}\n`);
 console.log("📝 Example 4: Passive mode with custom context\n");
 
 const customContextRules: RulesConfig = {
-	"cloudflare/wrangler": [
+	"cli/wrangler": [
 		"error",
 		{
 			mode: "passive",
@@ -159,11 +157,11 @@ console.log("🔧 Example 5: Multiple modal rules together\n");
 
 const mixedRules: RulesConfig = {
 	// Strict - block these entirely
-	"cloudflare/wrangler": ["error", { mode: "strict" }],
-	"infra/terraform": ["error", { mode: "strict" }],
+	"cli/wrangler": ["error", { mode: "strict" }],
+	"cli/terraform": ["error", { mode: "strict" }],
 
 	// Passive - allow with context
-	"container/docker": ["error", { mode: "passive" }],
+	"cli/docker": ["error", { mode: "passive" }],
 	"tooling/npm": ["error", { mode: "passive" }],
 
 	// Also include some platform rules
@@ -196,8 +194,8 @@ console.log(`\n${"=".repeat(60)}\n`);
 console.log("📁 Example 6: File-based blocking in strict mode\n");
 
 const fileRules: RulesConfig = {
-	"cloudflare/wrangler": ["error", { mode: "strict" }],
-	"infra/terraform": ["error", { mode: "strict" }],
+	"cli/wrangler": ["error", { mode: "strict" }],
+	"cli/terraform": ["error", { mode: "strict" }],
 };
 
 const veilFiles = createVeil(buildConfigFromRules(fileRules));

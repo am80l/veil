@@ -4,7 +4,7 @@
  * Rules tailored for Windows, macOS, and Linux
  */
 
-import { registerRules } from "./registry";
+import { registerRules, setPlatformRegistrar } from "./registry";
 import type { VeilRule } from "./types";
 
 // ============================================================================
@@ -765,3 +765,6 @@ export function registerPlatformRules(): void {
 	registerRules(linuxRules);
 	registerRules(crossPlatformRules);
 }
+
+// Auto-register when module loads
+setPlatformRegistrar(registerPlatformRules);

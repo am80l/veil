@@ -32,40 +32,40 @@ describe("Modal Rules", () => {
 		});
 
 		it("should have wrangler rule with correct properties", () => {
-			expect(wranglerRule.id).toBe("cloudflare/wrangler");
+			expect(wranglerRule.id).toBe("cli/wrangler");
 			expect(wranglerRule.supportsMode).toBe(true);
 			expect(wranglerRule.defaultMode).toBe("passive");
 			expect(wranglerRule.createRules).toBeDefined();
 		});
 
 		it("should have docker rule with correct properties", () => {
-			expect(dockerRule.id).toBe("container/docker");
+			expect(dockerRule.id).toBe("cli/docker");
 			expect(dockerRule.supportsMode).toBe(true);
 			expect(dockerRule.defaultMode).toBe("passive");
 		});
 
 		it("should have terraform rule with correct properties", () => {
-			expect(terraformRule.id).toBe("infra/terraform");
+			expect(terraformRule.id).toBe("cli/terraform");
 			expect(terraformRule.supportsMode).toBe(true);
 		});
 
 		it("should have kubectl rule with correct properties", () => {
-			expect(kubectlRule.id).toBe("infra/kubectl");
+			expect(kubectlRule.id).toBe("cli/kubectl");
 			expect(kubectlRule.supportsMode).toBe(true);
 		});
 
 		it("should have AWS CLI rule with correct properties", () => {
-			expect(awsCliRule.id).toBe("cloud/aws-cli");
+			expect(awsCliRule.id).toBe("cli/aws");
 			expect(awsCliRule.supportsMode).toBe(true);
 		});
 
 		it("should have npm rule with correct properties", () => {
-			expect(npmRule.id).toBe("tooling/npm");
+			expect(npmRule.id).toBe("cli/npm");
 			expect(npmRule.supportsMode).toBe(true);
 		});
 
 		it("should have git rule with correct properties", () => {
-			expect(gitRule.id).toBe("tooling/git");
+			expect(gitRule.id).toBe("cli/git");
 			expect(gitRule.supportsMode).toBe(true);
 		});
 	});
@@ -73,7 +73,7 @@ describe("Modal Rules", () => {
 	describe("Strict Mode", () => {
 		it("should block wrangler commands in strict mode", () => {
 			const rules: RulesConfig = {
-				"cloudflare/wrangler": ["error", { mode: "strict" }],
+				"cli/wrangler": ["error", { mode: "strict" }],
 			};
 			const veil = createVeil(buildConfigFromRules(rules));
 
@@ -83,7 +83,7 @@ describe("Modal Rules", () => {
 
 		it("should block wrangler.toml in strict mode", () => {
 			const rules: RulesConfig = {
-				"cloudflare/wrangler": ["error", { mode: "strict" }],
+				"cli/wrangler": ["error", { mode: "strict" }],
 			};
 			const veil = createVeil(buildConfigFromRules(rules));
 
@@ -94,7 +94,7 @@ describe("Modal Rules", () => {
 		it("should use custom message in strict mode", () => {
 			const customMessage = "Custom block message";
 			const rules: RulesConfig = {
-				"cloudflare/wrangler": ["error", { mode: "strict", message: customMessage }],
+				"cli/wrangler": ["error", { mode: "strict", message: customMessage }],
 			};
 			const veil = createVeil(buildConfigFromRules(rules));
 
@@ -106,7 +106,7 @@ describe("Modal Rules", () => {
 
 		it("should block docker commands in strict mode", () => {
 			const rules: RulesConfig = {
-				"container/docker": ["error", { mode: "strict" }],
+				"cli/docker": ["error", { mode: "strict" }],
 			};
 			const veil = createVeil(buildConfigFromRules(rules));
 
@@ -116,7 +116,7 @@ describe("Modal Rules", () => {
 
 		it("should block Dockerfile in strict mode", () => {
 			const rules: RulesConfig = {
-				"container/docker": ["error", { mode: "strict" }],
+				"cli/docker": ["error", { mode: "strict" }],
 			};
 			const veil = createVeil(buildConfigFromRules(rules));
 
@@ -126,7 +126,7 @@ describe("Modal Rules", () => {
 
 		it("should block terraform commands in strict mode", () => {
 			const rules: RulesConfig = {
-				"infra/terraform": ["error", { mode: "strict" }],
+				"cli/terraform": ["error", { mode: "strict" }],
 			};
 			const veil = createVeil(buildConfigFromRules(rules));
 
@@ -136,7 +136,7 @@ describe("Modal Rules", () => {
 
 		it("should block kubectl commands in strict mode", () => {
 			const rules: RulesConfig = {
-				"infra/kubectl": ["error", { mode: "strict" }],
+				"cli/kubectl": ["error", { mode: "strict" }],
 			};
 			const veil = createVeil(buildConfigFromRules(rules));
 
@@ -145,7 +145,7 @@ describe("Modal Rules", () => {
 
 		it("should block AWS CLI commands in strict mode", () => {
 			const rules: RulesConfig = {
-				"cloud/aws-cli": ["error", { mode: "strict" }],
+				"cli/aws": ["error", { mode: "strict" }],
 			};
 			const veil = createVeil(buildConfigFromRules(rules));
 
@@ -154,7 +154,7 @@ describe("Modal Rules", () => {
 
 		it("should block npm install in strict mode", () => {
 			const rules: RulesConfig = {
-				"tooling/npm": ["error", { mode: "strict" }],
+				"cli/npm": ["error", { mode: "strict" }],
 			};
 			const veil = createVeil(buildConfigFromRules(rules));
 
@@ -165,7 +165,7 @@ describe("Modal Rules", () => {
 
 		it("should block git push in strict mode", () => {
 			const rules: RulesConfig = {
-				"tooling/git": ["error", { mode: "strict" }],
+				"cli/git": ["error", { mode: "strict" }],
 			};
 			const veil = createVeil(buildConfigFromRules(rules));
 
@@ -176,7 +176,7 @@ describe("Modal Rules", () => {
 	describe("Passive Mode", () => {
 		it("should allow wrangler commands in passive mode", () => {
 			const rules: RulesConfig = {
-				"cloudflare/wrangler": ["error", { mode: "passive" }],
+				"cli/wrangler": ["error", { mode: "passive" }],
 			};
 			const veil = createVeil(buildConfigFromRules(rules));
 
@@ -186,7 +186,7 @@ describe("Modal Rules", () => {
 
 		it("should allow docker commands in passive mode", () => {
 			const rules: RulesConfig = {
-				"container/docker": ["error", { mode: "passive" }],
+				"cli/docker": ["error", { mode: "passive" }],
 			};
 			const veil = createVeil(buildConfigFromRules(rules));
 
@@ -195,7 +195,7 @@ describe("Modal Rules", () => {
 
 		it("should allow terraform commands in passive mode", () => {
 			const rules: RulesConfig = {
-				"infra/terraform": ["error", { mode: "passive" }],
+				"cli/terraform": ["error", { mode: "passive" }],
 			};
 			const veil = createVeil(buildConfigFromRules(rules));
 
@@ -204,7 +204,7 @@ describe("Modal Rules", () => {
 
 		it("should allow npm commands in passive mode", () => {
 			const rules: RulesConfig = {
-				"tooling/npm": ["error", { mode: "passive" }],
+				"cli/npm": ["error", { mode: "passive" }],
 			};
 			const veil = createVeil(buildConfigFromRules(rules));
 
@@ -215,7 +215,7 @@ describe("Modal Rules", () => {
 	describe("Default Mode", () => {
 		it("should use passive mode by default for wrangler", () => {
 			const rules: RulesConfig = {
-				"cloudflare/wrangler": "error", // No mode specified
+				"cli/wrangler": "error", // No mode specified
 			};
 			const veil = createVeil(buildConfigFromRules(rules));
 
@@ -226,13 +226,13 @@ describe("Modal Rules", () => {
 
 	describe("Context Helpers", () => {
 		it("should return default context for known rules", () => {
-			expect(getDefaultContext("cloudflare/wrangler")).toBeDefined();
-			expect(getDefaultContext("cloudflare/wrangler")).toContain("Cloudflare");
+			expect(getDefaultContext("cli/wrangler")).toBeDefined();
+			expect(getDefaultContext("cli/wrangler")).toContain("Cloudflare");
 		});
 
 		it("should return default strict message for known rules", () => {
-			expect(getDefaultStrictMessage("cloudflare/wrangler")).toBeDefined();
-			expect(getDefaultStrictMessage("cloudflare/wrangler")).toContain("blocked");
+			expect(getDefaultStrictMessage("cli/wrangler")).toBeDefined();
+			expect(getDefaultStrictMessage("cli/wrangler")).toContain("blocked");
 		});
 
 		it("should return undefined for unknown rules", () => {
@@ -244,8 +244,8 @@ describe("Modal Rules", () => {
 	describe("Mixed Configurations", () => {
 		it("should handle mixed strict and passive rules", () => {
 			const rules: RulesConfig = {
-				"cloudflare/wrangler": ["error", { mode: "strict" }],
-				"container/docker": ["error", { mode: "passive" }],
+				"cli/wrangler": ["error", { mode: "strict" }],
+				"cli/docker": ["error", { mode: "passive" }],
 			};
 			const veil = createVeil(buildConfigFromRules(rules));
 
@@ -255,7 +255,7 @@ describe("Modal Rules", () => {
 
 		it("should work with platform rules", () => {
 			const rules: RulesConfig = {
-				"cloudflare/wrangler": ["error", { mode: "strict" }],
+				"cli/wrangler": ["error", { mode: "strict" }],
 				"linux/no-delete-root": "error",
 			};
 			const veil = createVeil(buildConfigFromRules(rules, "linux"));

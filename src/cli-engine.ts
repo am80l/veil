@@ -28,11 +28,17 @@ export function createCliEngine(rules: CliRule[]): CliEngine {
 		const { action, rule } = result;
 
 		switch (action) {
-			case "allow":
-				return {
+			case "allow": {
+				const allowResult: CliResult = {
 					ok: true,
 					command,
 				};
+				// Surface context from passive mode rules
+				if (rule.reason) {
+					allowResult.context = rule.reason;
+				}
+				return allowResult;
+			}
 
 			case "deny": {
 				const denyResult: CliResult = {

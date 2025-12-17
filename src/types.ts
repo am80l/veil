@@ -88,6 +88,10 @@ export interface VeilInjectors {
  */
 export interface VeilResult {
 	ok: boolean;
+	/** Optional context or guidance (e.g., from passive mode rules) */
+	context?: string;
+	/** Optional metadata attached to the result */
+	metadata?: Record<string, unknown>;
 }
 
 /**
@@ -96,6 +100,10 @@ export interface VeilResult {
 export interface VeilSuccess<T = unknown> extends VeilResult {
 	ok: true;
 	value: T;
+	/** Context or guidance from passive mode rules */
+	context?: string;
+	/** Additional metadata */
+	metadata?: Record<string, unknown>;
 }
 
 /**
@@ -162,6 +170,10 @@ export interface CliResult extends VeilResult {
 	reason?: BlockReason;
 	command?: string;
 	safeAlternatives?: string[];
+	/** Context or guidance from passive mode rules */
+	context?: string;
+	/** Additional metadata */
+	metadata?: Record<string, unknown>;
 }
 
 // ============================================================================
@@ -191,6 +203,22 @@ export interface VeilContext {
 	visibleEnv: Record<string, string>;
 	/** Record of all intercepted calls */
 	interceptedCalls: InterceptRecord[];
+}
+
+/**
+ * Result of a guarded operation with execution context
+ */
+export interface GuardResult<T> {
+	/** The result of the operation */
+	value: T;
+	/** Intercepts that occurred during the guarded execution */
+	intercepts: InterceptRecord[];
+	/** Duration of the operation in milliseconds */
+	duration: number;
+	/** Whether the operation was successful */
+	success: boolean;
+	/** Any error that occurred */
+	error?: Error;
 }
 
 /**
@@ -261,8 +289,16 @@ export interface Veil {
 
 	/**
 	 * Execute a guarded operation
+	 * @param operation - The operation to execute
+	 * @param options - Optional settings
+	 * @returns The result of the operation, or a detailed GuardResult if detailed is true
 	 */
 	guard<T>(operation: () => T | Promise<T>): Promise<T>;
+	guard<T>(operation: () => T | Promise<T>, options: { detailed: true }): Promise<GuardResult<T>>;
+	guard<T>(
+		operation: () => T | Promise<T>,
+		options?: { detailed?: boolean },
+	): Promise<T | GuardResult<T>>;
 
 	/**
 	 * Create a scoped instance with additional rules

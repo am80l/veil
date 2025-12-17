@@ -42,6 +42,38 @@
 // Main factory
 export { createVeil } from "./veil";
 
+// Builder API
+export { VeilBuilder, veilBuilder } from "./builder";
+
+// Plugin System
+export {
+	PluginManager,
+	createLoggingPlugin,
+	createMetricsPlugin,
+} from "./plugins";
+export type {
+	VeilPlugin,
+	FileHookContext,
+	EnvHookContext,
+	CliHookContext,
+	HookContext,
+	BeforeHookResult,
+} from "./plugins";
+
+// Audit System
+export {
+	AuditManager,
+	MemoryStorageAdapter,
+	createConsoleStorageAdapter,
+} from "./audit";
+export type {
+	AuditEvent,
+	AuditEventType,
+	AuditEventListener,
+	AuditStorageAdapter,
+	AuditQueryCriteria,
+} from "./audit";
+
 // Types
 export type {
 	// Configuration
@@ -63,6 +95,7 @@ export type {
 	DirectoryResult,
 	EnvResult,
 	CliResult,
+	GuardResult,
 	// Context
 	VeilContext,
 	InterceptRecord,
@@ -120,6 +153,7 @@ export {
 	getRecommendedRules,
 	extendRules,
 	clearRegistry,
+	ensureRulesRegistered,
 } from "./rules/registry";
 export {
 	windowsRules,

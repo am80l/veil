@@ -191,5 +191,50 @@ describe("veil", () => {
 
 			expect(result).toBe("async result");
 		});
+
+		it("returns detailed result with intercepts when detailed option is true", async () => {
+			const veil = createVeil({
+				fileRules: [{ match: "secret", action: "deny" }],
+			});
+
+			const result = await veil.guard(
+				() => {
+					veil.checkFile("/path/to/secret.txt");
+					return "operation complete";
+				},
+				{ detailed: true },
+			);
+
+			expect(result.value).toBe("operation complete");
+			expect(result.success).toBe(true);
+			expect(result.duration).toBeGreaterThanOrEqual(0);
+			expect(result.intercepts).toHaveLength(1);
+			expect(result.intercepts[0].type).toBe("file");
+			expect(result.intercepts[0].target).toBe("/path/to/secret.txt");
+		});
+
+		it("captures errors in detailed mode", async () => {
+			const veil = createVeil();
+
+			const result = await veil.guard(
+				() => {
+					throw new Error("Test error");
+				},
+				{ detailed: true },
+			);
+
+			expect(result.success).toBe(false);
+			expect(result.error?.message).toBe("Test error");
+		});
+
+		it("propagates errors in simple mode", async () => {
+			const veil = createVeil();
+
+			await expect(
+				veil.guard(() => {
+					throw new Error("Should propagate");
+				}),
+			).rejects.toThrow("Should propagate");
+		});
 	});
 });
