@@ -253,7 +253,12 @@ npm run typecheck
 
 ## License
 
-MIT © Your Name
+MIT © [am80l](https://github.com/am80l)
+
+## Contributors
+
+- [am80l](https://github.com/am80l) - Creator & Maintainer
+- [michaelhartmayer](https://github.com/michaelhartmayer) - Core Contributor & Inspiration
 
 ---
 
