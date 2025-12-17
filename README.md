@@ -458,6 +458,53 @@ const customPreset = {
 };
 ```
 
+## Monorepo & Directory Pattern Examples
+
+### Example: NX Monorepo Directory Tree
+
+```
+my-nx-monorepo/
+├── apps/
+│   ├── web-app/
+│   │   ├── src/
+│   │   └── secrets/
+│   └── admin-app/
+│       ├── src/
+│       └── secrets/
+├── libs/
+│   ├── shared/
+│   │   └── private/
+│   └── api/
+│       └── private/
+├── tools/
+│   └── scripts/
+├── .env
+└── .nx.json
+```
+
+### Veil Config: Block Sensitive Patterns
+
+```jsonc
+{
+  "fileRules": [
+    // Block all secrets folders in any app
+    { "match": "apps/*/secrets", "action": "deny" },
+    // Block all private folders in any lib
+    { "match": "libs/**/private", "action": "deny" },
+    // Block all .env files anywhere
+    { "match": "**/.env", "action": "deny" },
+    // Optionally block config files
+    { "match": ".nx.json", "action": "deny" }
+  ]
+}
+```
+
+- Supports glob patterns (`*`, `**`) for deep matching
+- Use `deny`, `mask`, or `rewrite` actions as needed
+- Works for Yarn, PNPM, NX, Turborepo, and custom monorepos
+
+> For more advanced patterns, see the [Glob Pattern Reference](https://github.com/micromatch/micromatch#matching-features).
+
 ## ESLint-Style Rules System
 
 Veil includes a powerful rule-based configuration system inspired by ESLint. Rules are named, documented, and can be individually enabled/disabled.
@@ -1017,50 +1064,3 @@ MIT © [Squad-Zero](https://github.com/Squad-Zero)
 ---
 
 Built with ❤️ for safer AI-assisted development.
-
-## Monorepo & Directory Pattern Examples
-
-### Example: NX Monorepo Directory Tree
-
-```
-my-nx-monorepo/
-├── apps/
-│   ├── web-app/
-│   │   ├── src/
-│   │   └── secrets/
-│   └── admin-app/
-│       ├── src/
-│       └── secrets/
-├── libs/
-│   ├── shared/
-│   │   └── private/
-│   └── api/
-│       └── private/
-├── tools/
-│   └── scripts/
-├── .env
-└── .nx.json
-```
-
-### Veil Config: Block Sensitive Patterns
-
-```jsonc
-{
-  "fileRules": [
-    // Block all secrets folders in any app
-    { "match": "apps/*/secrets", "action": "deny" },
-    // Block all private folders in any lib
-    { "match": "libs/**/private", "action": "deny" },
-    // Block all .env files anywhere
-    { "match": "**/.env", "action": "deny" },
-    // Optionally block config files
-    { "match": ".nx.json", "action": "deny" }
-  ]
-}
-```
-
-- Supports glob patterns (`*`, `**`) for deep matching
-- Use `deny`, `mask`, or `rewrite` actions as needed
-- Works for Yarn, PNPM, NX, Turborepo, and custom monorepos
-
-> For more advanced patterns, see the [Glob Pattern Reference](https://github.com/micromatch/micromatch#matching-features).
