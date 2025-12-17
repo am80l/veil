@@ -304,18 +304,18 @@ veil.checkCommand('DROP DATABASE prod'); // → blocked
 npx veil <command> [options]
 ```
 
-| Command | Description |
-|---------|-------------|
-| `init` | Create `.veilrc.json` with a preset |
-| `check <target>` | Check if file/env/cli would be blocked |
-| `explain <target>` | Explain why something is blocked |
-| `scan` | Scan project for sensitive files |
-| `add-rule` | Add a rule to config |
-| `remove-rule` | Remove a rule from config |
-| `list-rules` | List all built-in rules |
-| `list-packs` | List available presets |
-| `show-config` | Print current config |
-| `apply-pack` | Merge a preset into config |
+| Command            | Description                            |
+| ------------------ | -------------------------------------- |
+| `init`             | Create `.veilrc.json` with a preset    |
+| `check <target>`   | Check if file/env/cli would be blocked |
+| `explain <target>` | Explain why something is blocked       |
+| `scan`             | Scan project for sensitive files       |
+| `add-rule`         | Add a rule to config                   |
+| `remove-rule`      | Remove a rule from config              |
+| `list-rules`       | List all built-in rules                |
+| `list-packs`       | List available presets                 |
+| `show-config`      | Print current config                   |
+| `apply-pack`       | Merge a preset into config             |
 
 ```bash
 # Examples
@@ -331,12 +331,12 @@ npx veil scan -d ./src --depth 5
 
 ## Documentation
 
-| Document | Description |
-|----------|-------------|
-| [API Reference](./docs/api-reference.md) | Complete API documentation |
-| [Presets & Rules](./docs/presets-and-rules.md) | ESLint-style rules system |
+| Document                                                   | Description                             |
+| ---------------------------------------------------------- | --------------------------------------- |
+| [API Reference](./docs/api-reference.md)                   | Complete API documentation              |
+| [Presets & Rules](./docs/presets-and-rules.md)             | ESLint-style rules system               |
 | [Framework Integrations](./docs/framework-integrations.md) | OpenAI, Anthropic, LangChain, Vercel AI |
-| [Plugins & Audit](./docs/plugins-and-audit.md) | Plugin system and audit trails |
+| [Plugins & Audit](./docs/plugins-and-audit.md)             | Plugin system and audit trails          |
 
 ---
 
