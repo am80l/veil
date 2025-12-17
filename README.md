@@ -339,17 +339,17 @@ const veil = createVeil(buildConfigFromRules(customRules));
 
 ### Available Rule Packs
 
-| Pack | Description |
-|------|-------------|
-| `security:recommended` | Essential security rules |
-| `security:strict` | Maximum security |
-| `platform:windows` | Windows-specific protections |
-| `platform:darwin` | macOS-specific protections |
-| `platform:linux` | Linux-specific protections |
-| `context:dev` | Rules for local development |
-| `context:ci` | Rules for CI/CD pipelines |
-| `context:production` | Maximum protection for production |
-| `minimal` | Just the essentials |
+| Pack                   | Description                       |
+| ---------------------- | --------------------------------- |
+| `security:recommended` | Essential security rules          |
+| `security:strict`      | Maximum security                  |
+| `platform:windows`     | Windows-specific protections      |
+| `platform:darwin`      | macOS-specific protections        |
+| `platform:linux`       | Linux-specific protections        |
+| `context:dev`          | Rules for local development       |
+| `context:ci`           | Rules for CI/CD pipelines         |
+| `context:production`   | Maximum protection for production |
+| `minimal`              | Just the essentials               |
 
 ## Modal Rules (Strict vs Passive Modes)
 
@@ -389,15 +389,15 @@ const strictVeil = createVeil(buildConfigFromRules({
 
 ### Available Modal Rules
 
-| Rule | Default Mode | Description |
-|------|--------------|-------------|
-| `wrangler` | passive | Cloudflare Workers CLI |
-| `docker` | passive | Docker container management |
-| `terraform` | passive | Infrastructure as Code |
-| `kubectl` | passive | Kubernetes CLI |
-| `aws-cli` | passive | AWS Command Line Interface |
-| `npm` | passive | Node.js package manager |
-| `git` | passive | Version control operations |
+| Rule        | Default Mode | Description                 |
+| ----------- | ------------ | --------------------------- |
+| `wrangler`  | passive      | Cloudflare Workers CLI      |
+| `docker`    | passive      | Docker container management |
+| `terraform` | passive      | Infrastructure as Code      |
+| `kubectl`   | passive      | Kubernetes CLI              |
+| `aws-cli`   | passive      | AWS Command Line Interface  |
+| `npm`       | passive      | Node.js package manager     |
+| `git`       | passive      | Version control operations  |
 
 ### Strict vs Passive Examples
 
@@ -457,15 +457,15 @@ const mixedConfig = buildConfigFromRules({
 
 ### Modal Rules API
 
-| Function | Description |
-|----------|-------------|
-| `wranglerRule` | Modal rule for Cloudflare Wrangler |
-| `dockerRule` | Modal rule for Docker |
-| `terraformRule` | Modal rule for Terraform |
-| `kubectlRule` | Modal rule for Kubernetes |
-| `awsCliRule` | Modal rule for AWS CLI |
-| `npmRule` | Modal rule for npm |
-| `gitRule` | Modal rule for Git |
+| Function        | Description                        |
+| --------------- | ---------------------------------- |
+| `wranglerRule`  | Modal rule for Cloudflare Wrangler |
+| `dockerRule`    | Modal rule for Docker              |
+| `terraformRule` | Modal rule for Terraform           |
+| `kubectlRule`   | Modal rule for Kubernetes          |
+| `awsCliRule`    | Modal rule for AWS CLI             |
+| `npmRule`       | Modal rule for npm                 |
+| `gitRule`       | Modal rule for Git                 |
 
 Each modal rule has:
 - `name` - Rule identifier (e.g., "wrangler")
@@ -503,18 +503,18 @@ cli/no-credential-echo     # Block echo $PASSWORD
 
 ### Rules API Reference
 
-| Function | Description |
-|----------|-------------|
-| `registerPlatformRules()` | Register all built-in rules (call once) |
-| `recommended()` | Get recommended rules for current platform |
-| `strict()` | Get strict rules for current platform |
-| `fromPacks(...packs)` | Combine multiple rule packs |
-| `fromCategory(category)` | Get all rules in a category |
-| `buildConfigFromRules(rules, platform?)` | Convert rules to VeilConfig |
-| `extendRules(base, overrides)` | Extend a config with overrides |
-| `listRules()` | List all available rule IDs |
-| `listPacks()` | List all available pack names |
-| `getRule(id)` | Get rule details by ID |
+| Function                                 | Description                                |
+| ---------------------------------------- | ------------------------------------------ |
+| `registerPlatformRules()`                | Register all built-in rules (call once)    |
+| `recommended()`                          | Get recommended rules for current platform |
+| `strict()`                               | Get strict rules for current platform      |
+| `fromPacks(...packs)`                    | Combine multiple rule packs                |
+| `fromCategory(category)`                 | Get all rules in a category                |
+| `buildConfigFromRules(rules, platform?)` | Convert rules to VeilConfig                |
+| `extendRules(base, overrides)`           | Extend a config with overrides             |
+| `listRules()`                            | List all available rule IDs                |
+| `listPacks()`                            | List all available pack names              |
+| `getRule(id)`                            | Get rule details by ID                     |
 
 ### Veil Instance Methods
 
