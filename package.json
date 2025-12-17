@@ -40,7 +40,7 @@
     ]
   },
   "bin": {
-    "veil": "dist/cli/index.cjs"
+    "@squadzero/veil": "dist/cli/index.cjs"
   },
   "keywords": [
     "llm",
