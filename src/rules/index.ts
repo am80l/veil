@@ -9,3 +9,4 @@ export * from "./types";
 export * from "./registry";
 export * from "./platform";
 export * from "./categories";
+export * from "./modal";

@@ -104,6 +104,9 @@ export type {
 	RulesConfig,
 	RulePack,
 	Platform,
+	RuleMode,
+	ModalRuleOptions,
+	ModalRuleConfig,
 } from "./rules/types";
 export {
 	registerRule,
@@ -134,3 +137,16 @@ export {
 	listRules,
 	listPacks,
 } from "./rules/categories";
+export {
+	modalRules,
+	wranglerRule,
+	dockerRule,
+	terraformRule,
+	kubectlRule,
+	awsCliRule,
+	npmRule,
+	gitRule,
+	registerModalRules,
+	getDefaultContext,
+	getDefaultStrictMessage,
+} from "./rules/modal";

@@ -351,6 +351,130 @@ const veil = createVeil(buildConfigFromRules(customRules));
 | `context:production` | Maximum protection for production |
 | `minimal` | Just the essentials |
 
+## Modal Rules (Strict vs Passive Modes)
+
+Modal rules provide dynamic enforcement modes for tooling like Wrangler, Docker, Terraform, and more. Each modal rule can operate in two modes:
+
+- **Strict Mode**: Blocks access entirely and returns a custom message
+- **Passive Mode**: Allows access but injects contextual guidance
+
+### Quick Start with Modal Rules
+
+```typescript
+import { 
+  createVeil, 
+  registerPlatformRules, 
+  buildConfigFromRules,
+  wranglerRule, 
+  dockerRule, 
+  terraformRule 
+} from 'veil';
+
+registerPlatformRules();
+
+// Passive mode: Allow wrangler with helpful context
+const veil = createVeil(buildConfigFromRules({
+  'wrangler': { mode: 'passive' },
+  'docker': { mode: 'passive' }
+}));
+
+// Strict mode: Block terraform with custom message
+const strictVeil = createVeil(buildConfigFromRules({
+  'terraform': { 
+    mode: 'strict', 
+    message: 'Terraform is blocked in this environment' 
+  }
+}));
+```
+
+### Available Modal Rules
+
+| Rule | Default Mode | Description |
+|------|--------------|-------------|
+| `wrangler` | passive | Cloudflare Workers CLI |
+| `docker` | passive | Docker container management |
+| `terraform` | passive | Infrastructure as Code |
+| `kubectl` | passive | Kubernetes CLI |
+| `aws-cli` | passive | AWS Command Line Interface |
+| `npm` | passive | Node.js package manager |
+| `git` | passive | Version control operations |
+
+### Strict vs Passive Examples
+
+```typescript
+// PASSIVE MODE: Injects context about the tool
+const passiveConfig = buildConfigFromRules({
+  'wrangler': { mode: 'passive' }
+});
+
+const veil = createVeil(passiveConfig);
+const result = veil.checkCommand('wrangler deploy');
+// result.ok === true (allowed)
+// Context about KV stores, environments, etc. is available
+
+// STRICT MODE: Blocks the command entirely
+const strictConfig = buildConfigFromRules({
+  'wrangler': { 
+    mode: 'strict',
+    message: 'Wrangler is disabled. Use the Cloudflare dashboard instead.'
+  }
+});
+
+const strictVeil = createVeil(strictConfig);
+const blocked = strictVeil.checkCommand('wrangler deploy');
+// blocked.ok === false
+// blocked.reason === 'Wrangler is disabled. Use the Cloudflare dashboard instead.'
+```
+
+### Custom Context in Passive Mode
+
+```typescript
+const customPassive = buildConfigFromRules({
+  'docker': { 
+    mode: 'passive',
+    context: `Docker is available with the following constraints:
+      - Use 'docker-compose' for local development
+      - Production images must use the approved base image
+      - No --privileged containers allowed`
+  }
+});
+```
+
+### Mixed Modal and Static Rules
+
+```typescript
+const mixedConfig = buildConfigFromRules({
+  // Modal rules with modes
+  'wrangler': { mode: 'passive' },
+  'docker': { mode: 'strict', message: 'Docker is not available' },
+  
+  // Static rules (standard ESLint-style)
+  'env/mask-aws': 'error',
+  'fs/hide-env-files': 'error',
+  'linux/no-delete-root': 'error',
+});
+```
+
+### Modal Rules API
+
+| Function | Description |
+|----------|-------------|
+| `wranglerRule` | Modal rule for Cloudflare Wrangler |
+| `dockerRule` | Modal rule for Docker |
+| `terraformRule` | Modal rule for Terraform |
+| `kubectlRule` | Modal rule for Kubernetes |
+| `awsCliRule` | Modal rule for AWS CLI |
+| `npmRule` | Modal rule for npm |
+| `gitRule` | Modal rule for Git |
+
+Each modal rule has:
+- `name` - Rule identifier (e.g., "wrangler")
+- `supportsMode` - Always `true`
+- `defaultMode` - Default enforcement mode
+- `defaultContext` - Default passive mode context
+- `defaultMessage` - Default strict mode message
+- `createRules(mode, options)` - Factory to generate rules
+
 ### Example Rule IDs
 
 ```

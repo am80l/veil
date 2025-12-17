@@ -5,7 +5,14 @@
  */
 
 import type { VeilConfig } from "../types";
-import type { Platform, RuleConfig, RulesConfig, VeilRule } from "./types";
+import type {
+	ModalRuleConfig,
+	ModalRuleOptions,
+	Platform,
+	RuleConfig,
+	RulesConfig,
+	VeilRule,
+} from "./types";
 
 /**
  * All registered rules
@@ -114,6 +121,16 @@ function severityToEnabled(severity: RuleConfig): boolean {
 }
 
 /**
+ * Extract modal config from rule config
+ */
+function extractModalConfig(ruleConfig: RuleConfig): ModalRuleConfig | undefined {
+	if (typeof ruleConfig === "string") {
+		return undefined;
+	}
+	return ruleConfig[1];
+}
+
+/**
  * Build a VeilConfig from rules configuration
  */
 export function buildConfigFromRules(rulesConfig: RulesConfig, platform?: Platform): VeilConfig {
@@ -140,7 +157,35 @@ export function buildConfigFromRules(rulesConfig: RulesConfig, platform?: Platfo
 			continue;
 		}
 
-		// Add rules
+		// Handle modal rules (rules that support strict/passive modes)
+		if (rule.supportsMode && rule.createRules) {
+			const modalConfig = extractModalConfig(ruleConfig);
+			const mode = modalConfig?.mode ?? rule.defaultMode ?? "passive";
+
+			// Build options object only with defined values (exactOptionalPropertyTypes)
+			const options: ModalRuleOptions = {};
+			if (modalConfig?.message !== undefined) {
+				options.message = modalConfig.message;
+			}
+			if (modalConfig?.context !== undefined) {
+				options.context = modalConfig.context;
+			}
+
+			const generatedRules = rule.createRules(mode, options);
+
+			if (generatedRules.fileRules) {
+				config.fileRules?.push(...generatedRules.fileRules);
+			}
+			if (generatedRules.envRules) {
+				config.envRules?.push(...generatedRules.envRules);
+			}
+			if (generatedRules.cliRules) {
+				config.cliRules?.push(...generatedRules.cliRules);
+			}
+			continue;
+		}
+
+		// Add static rules
 		if (rule.fileRules) {
 			config.fileRules?.push(...rule.fileRules);
 		}
