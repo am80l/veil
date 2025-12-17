@@ -15,6 +15,7 @@ Veil acts as a *visibility firewall* between an LLM and your project's filesyste
 - 🎭 **Inject synthetic context** in place of sensitive real data
 - 📋 **Policy layers** - global, per-session, and per-call rules
 - 🔒 **Zero-leakage guardrails** with structured explanations
+- 🔧 **ESLint-style rules** - 49 named rules across Windows, macOS, and Linux
 
 ## Installation
 
@@ -267,6 +268,129 @@ const customPreset = {
   cliRules: DANGEROUS_COMMANDS
 };
 ```
+
+## ESLint-Style Rules System
+
+Veil includes a powerful rule-based configuration system inspired by ESLint. Rules are named, documented, and can be individually enabled/disabled.
+
+### Quick Start with Rules
+
+```typescript
+import { 
+  createVeil, 
+  registerPlatformRules, 
+  fromPacks, 
+  buildConfigFromRules,
+  recommended 
+} from 'veil';
+
+// Register all built-in rules (call once at startup)
+registerPlatformRules();
+
+// Method 1: Use the recommended preset for your platform
+const veil = createVeil(buildConfigFromRules(recommended()));
+
+// Method 2: Combine rule packs (like ESLint's "extends")
+const rules = fromPacks('security:recommended', 'platform:linux');
+const veil2 = createVeil(buildConfigFromRules(rules));
+```
+
+### Explicit Rule Configuration
+
+Configure rules individually like ESLint:
+
+```typescript
+import { createVeil, registerPlatformRules, buildConfigFromRules } from 'veil';
+
+registerPlatformRules();
+
+const veil = createVeil(buildConfigFromRules({
+  // Security rules
+  'env/mask-aws': 'error',
+  'env/deny-passwords': 'error',
+  'fs/hide-env-files': 'error',
+  
+  // Platform-specific (Linux)
+  'linux/no-delete-root': 'error',
+  'linux/no-delete-boot': 'error',
+  'linux/hide-shadow': 'warn',
+  
+  // Disable rules you don't need
+  'fs/hide-node-modules': 'off',
+}, 'linux'));
+```
+
+### Extending Presets
+
+```typescript
+import { recommended, extendRules, buildConfigFromRules } from 'veil';
+
+const customRules = extendRules(recommended(), {
+  // Override specific rules
+  'fs/hide-build-output': 'off',
+  
+  // Add stricter rules
+  'env/deny-database-urls': 'error',
+  'cli/no-curl-pipe-bash': 'error',
+});
+
+const veil = createVeil(buildConfigFromRules(customRules));
+```
+
+### Available Rule Packs
+
+| Pack | Description |
+|------|-------------|
+| `security:recommended` | Essential security rules |
+| `security:strict` | Maximum security |
+| `platform:windows` | Windows-specific protections |
+| `platform:darwin` | macOS-specific protections |
+| `platform:linux` | Linux-specific protections |
+| `context:dev` | Rules for local development |
+| `context:ci` | Rules for CI/CD pipelines |
+| `context:production` | Maximum protection for production |
+| `minimal` | Just the essentials |
+
+### Example Rule IDs
+
+```
+# Platform-specific
+linux/no-delete-root       # Prevent rm -rf /
+linux/hide-shadow          # Hide /etc/shadow
+darwin/hide-keychain       # Hide macOS Keychain
+darwin/no-disable-sip      # Prevent disabling SIP
+win/no-delete-system32     # Protect System32
+win/no-format-drive        # Prevent formatting drives
+
+# Cross-platform credentials
+env/mask-aws               # Mask AWS_* variables
+env/deny-passwords         # Deny PASSWORD variables
+env/mask-tokens            # Mask TOKEN/API_KEY vars
+
+# Filesystem
+fs/hide-env-files          # Hide .env files
+fs/hide-private-keys       # Hide *.pem, *.key files
+fs/hide-node-modules       # Hide node_modules
+
+# CLI safety
+cli/no-curl-pipe-bash      # Block curl | bash
+cli/no-credential-echo     # Block echo $PASSWORD
+```
+
+### Rules API Reference
+
+| Function | Description |
+|----------|-------------|
+| `registerPlatformRules()` | Register all built-in rules (call once) |
+| `recommended()` | Get recommended rules for current platform |
+| `strict()` | Get strict rules for current platform |
+| `fromPacks(...packs)` | Combine multiple rule packs |
+| `fromCategory(category)` | Get all rules in a category |
+| `buildConfigFromRules(rules, platform?)` | Convert rules to VeilConfig |
+| `extendRules(base, overrides)` | Extend a config with overrides |
+| `listRules()` | List all available rule IDs |
+| `listPacks()` | List all available pack names |
+| `getRule(id)` | Get rule details by ID |
 
 ### Veil Instance Methods
 
