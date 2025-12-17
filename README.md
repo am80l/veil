@@ -8,6 +8,40 @@ Veil acts as a *visibility firewall* between an LLM and your project's filesyste
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.6+-blue.svg)](https://www.typescriptlang.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
+## Why Veil?
+
+When you give an LLM access to your codebase (via tools like file reading, command execution, or environment access), you're exposing everything by default. Veil lets you:
+
+- **Prevent accidental exposure** of `.env` files, API keys, and credentials
+- **Block dangerous commands** like `rm -rf /` before they execute
+- **Hide irrelevant directories** like `node_modules` to reduce context noise
+- **Audit all access** to understand what your AI assistant is touching
+
+## How It Works
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                        Your Application                          │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                  │
+│   ┌─────────┐      ┌─────────┐      ┌─────────────────────┐     │
+│   │   LLM   │ ───▶ │  Veil   │ ───▶ │  Filesystem / Env   │     │
+│   │ (Claude,│      │ Filter  │      │  / CLI Execution    │     │
+│   │  GPT,   │      │         │      │                     │     │
+│   │ Gemini) │ ◀─── │         │ ◀─── │                     │     │
+│   └─────────┘      └─────────┘      └─────────────────────────┘ │
+│                         │                                        │
+│                    ┌────┴────┐                                   │
+│                    │  Rules  │                                   │
+│                    │ (deny,  │                                   │
+│                    │  mask,  │                                   │
+│                    │ rewrite)│                                   │
+│                    └─────────┘                                   │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+**Veil sits between your LLM and system resources.** Before the LLM reads a file, accesses an env var, or runs a command, Veil checks your rules and either allows, blocks, masks, or rewrites the operation.
+
 ## Features
 
 - 🚫 **Hide** files, directories, and environment variables from LLMs
@@ -29,33 +63,188 @@ yarn add veil
 
 ## Quick Start
 
-```typescript
-import { createVeil } from 'veil';
+### Step 1: Create a Veil Instance
 
-const veil = createVeil({
-  // Hide directories from LLM visibility
-  fileRules: [
-    { match: 'node_modules', action: 'deny' },
-    { match: /secrets/, action: 'deny' },
-    { match: '.env', action: 'mask', replacement: 'hidden_for_context' }
-  ],
-  
-  // Protect sensitive environment variables
-  envRules: [
-    { match: /^AWS_/, action: 'mask' },
-    { match: 'DATABASE_URL', action: 'deny' },
-    { match: 'CLOUDFLARE_API_TOKEN', action: 'rewrite', replacement: '[REDACTED]' }
-  ],
-  
-  // Block dangerous CLI commands
-  cliRules: [
-    { match: /^rm -rf/, action: 'deny', safeAlternatives: ['rm -i', 'trash'] },
-    { match: /^docker build/, action: 'rewrite', replacement: "echo '[blocked]'" }
-  ]
-});
+```typescript
+import { createVeil, PRESET_RECOMMENDED } from 'veil';
+
+// Start with the recommended preset (covers common security cases)
+const veil = createVeil(PRESET_RECOMMENDED);
 ```
 
-## Usage
+### Step 2: Wrap Your LLM Tool Handlers
+
+When your LLM requests to read a file, check an env var, or run a command, run it through Veil first:
+
+```typescript
+// Example: Wrapping a file-read tool for an LLM
+async function handleFileRead(path: string): Promise<string> {
+  // Check if Veil allows access
+  const check = veil.checkFile(path);
+  
+  if (!check.ok) {
+    // Return a safe message to the LLM instead of the file contents
+    return `Access denied: ${check.reason}`;
+  }
+  
+  // Safe to read - proceed normally
+  return fs.readFileSync(path, 'utf-8');
+}
+
+// Example: Wrapping an env-var tool
+function handleGetEnv(key: string): string {
+  const result = veil.getEnv(key);
+  
+  if (!result.ok) {
+    return `Environment variable '${key}' is not accessible`;
+  }
+  
+  // Returns masked value if configured (e.g., "sk-****1234")
+  return result.value;
+}
+
+// Example: Wrapping a command execution tool
+async function handleRunCommand(command: string): Promise<string> {
+  const check = veil.checkCommand(command);
+  
+  if (!check.ok) {
+    return `Command blocked: ${check.reason}. Try: ${check.safeAlternatives?.join(', ')}`;
+  }
+  
+  // Use the (possibly rewritten) command
+  return execSync(check.command).toString();
+}
+```
+
+### Step 3: Use with Your LLM Framework
+
+Here's how Veil integrates with popular LLM frameworks:
+
+<details>
+<summary><b>OpenAI Function Calling</b></summary>
+
+```typescript
+import OpenAI from 'openai';
+import { createVeil, PRESET_RECOMMENDED } from 'veil';
+
+const veil = createVeil(PRESET_RECOMMENDED);
+const openai = new OpenAI();
+
+// Define your tools
+const tools = [
+  {
+    type: 'function',
+    function: {
+      name: 'read_file',
+      parameters: { type: 'object', properties: { path: { type: 'string' } } }
+    }
+  }
+];
+
+// Handle tool calls with Veil protection
+async function handleToolCall(name: string, args: any) {
+  if (name === 'read_file') {
+    const check = veil.checkFile(args.path);
+    if (!check.ok) return { error: check.reason };
+    return { content: fs.readFileSync(args.path, 'utf-8') };
+  }
+}
+```
+</details>
+
+<details>
+<summary><b>Anthropic Claude Tool Use</b></summary>
+
+```typescript
+import Anthropic from '@anthropic-ai/sdk';
+import { createVeil, PRESET_RECOMMENDED } from 'veil';
+
+const veil = createVeil(PRESET_RECOMMENDED);
+const anthropic = new Anthropic();
+
+// Process tool use blocks with Veil protection
+function processToolUse(toolName: string, toolInput: any) {
+  if (toolName === 'read_file') {
+    const check = veil.checkFile(toolInput.path);
+    if (!check.ok) {
+      return { type: 'error', error: check.reason };
+    }
+    return { type: 'success', content: fs.readFileSync(toolInput.path, 'utf-8') };
+  }
+  
+  if (toolName === 'run_command') {
+    const check = veil.checkCommand(toolInput.command);
+    if (!check.ok) {
+      return { type: 'error', error: check.reason };
+    }
+    return { type: 'success', output: execSync(check.command).toString() };
+  }
+}
+```
+</details>
+
+<details>
+<summary><b>LangChain Tools</b></summary>
+
+```typescript
+import { DynamicTool } from 'langchain/tools';
+import { createVeil, PRESET_RECOMMENDED } from 'veil';
+
+const veil = createVeil(PRESET_RECOMMENDED);
+
+// Create a Veil-protected file reading tool
+const readFileTool = new DynamicTool({
+  name: 'read_file',
+  description: 'Read contents of a file',
+  func: async (path: string) => {
+    const check = veil.checkFile(path);
+    if (!check.ok) {
+      return `Cannot read file: ${check.reason}`;
+    }
+    return fs.readFileSync(path, 'utf-8');
+  },
+});
+
+// Create a Veil-protected command execution tool
+const runCommandTool = new DynamicTool({
+  name: 'run_command',
+  description: 'Execute a shell command',
+  func: async (command: string) => {
+    const check = veil.checkCommand(command);
+    if (!check.ok) {
+      return `Command blocked: ${check.reason}`;
+    }
+    return execSync(check.command).toString();
+  },
+});
+```
+</details>
+
+<details>
+<summary><b>Vercel AI SDK</b></summary>
+
+```typescript
+import { tool } from 'ai';
+import { z } from 'zod';
+import { createVeil, PRESET_RECOMMENDED } from 'veil';
+
+const veil = createVeil(PRESET_RECOMMENDED);
+
+const readFileTool = tool({
+  description: 'Read a file from the filesystem',
+  parameters: z.object({ path: z.string() }),
+  execute: async ({ path }) => {
+    const check = veil.checkFile(path);
+    if (!check.ok) {
+      return { error: check.reason };
+    }
+    return { content: fs.readFileSync(path, 'utf-8') };
+  },
+});
+```
+</details>
+
+## Core API
 
 ### File & Directory Access Control
 
