@@ -175,12 +175,12 @@ const veil = createVeil({
 
 ## Rule Actions
 
-| Action    | Description                                    |
-|-----------|------------------------------------------------|
-| `allow`   | Permit access (default for non-matching)       |
-| `deny`    | Block access completely                        |
-| `mask`    | Return a masked/placeholder value              |
-| `rewrite` | Replace with custom content                    |
+| Action    | Description                              |
+| --------- | ---------------------------------------- |
+| `allow`   | Permit access (default for non-matching) |
+| `deny`    | Block access completely                  |
+| `mask`    | Return a masked/placeholder value        |
+| `rewrite` | Replace with custom content              |
 
 ## Blocked Response Format
 
@@ -213,19 +213,19 @@ Creates a new Veil instance.
 
 ### Veil Instance Methods
 
-| Method | Description |
-|--------|-------------|
-| `checkFile(path)` | Check if a file is accessible |
-| `checkDirectory(path)` | Check if a directory is accessible |
-| `filterPaths(paths)` | Filter a list of paths by visibility |
-| `getEnv(key)` | Get an env variable with rules applied |
-| `getVisibleEnv()` | Get all visible env variables |
-| `checkCommand(cmd)` | Check/transform a CLI command |
-| `guard(fn)` | Execute operation in guarded context |
-| `scope(policy)` | Create scoped instance with extra rules |
-| `getContext()` | Get current visibility context |
-| `getInterceptedCalls()` | Get audit log of blocked operations |
-| `clearInterceptedCalls()` | Clear the audit log |
+| Method                    | Description                             |
+| ------------------------- | --------------------------------------- |
+| `checkFile(path)`         | Check if a file is accessible           |
+| `checkDirectory(path)`    | Check if a directory is accessible      |
+| `filterPaths(paths)`      | Filter a list of paths by visibility    |
+| `getEnv(key)`             | Get an env variable with rules applied  |
+| `getVisibleEnv()`         | Get all visible env variables           |
+| `checkCommand(cmd)`       | Check/transform a CLI command           |
+| `guard(fn)`               | Execute operation in guarded context    |
+| `scope(policy)`           | Create scoped instance with extra rules |
+| `getContext()`            | Get current visibility context          |
+| `getInterceptedCalls()`   | Get audit log of blocked operations     |
+| `clearInterceptedCalls()` | Clear the audit log                     |
 
 ## Use Cases
 
@@ -258,7 +258,7 @@ MIT © [am80l](https://github.com/am80l)
 ## Contributors
 
 - [am80l](https://github.com/am80l) - Creator & Maintainer
-- [michaelhartmayer](https://github.com/michaelhartmayer) - Core Contributor & Inspiration
+- [michaelhartmayer](https://github.com/michaelhartmayer) - Creator & Maintainer
 
 ---
 
