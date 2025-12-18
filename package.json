@@ -1,6 +1,6 @@
 {
   "name": "@squadzero/veil",
-  "version": "0.4.0",
+  "version": "0.4.2",
   "type": "module",
   "description": "A TypeScript library for selective context access, visibility control & safety enforcement for LLMs",
   "main": "dist/index.cjs",

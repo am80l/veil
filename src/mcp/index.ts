@@ -74,6 +74,48 @@ async function loadVeilConfig(): Promise<VeilConfig | undefined> {
 		}
 	}
 
+	// Try JSON config as fallback
+	const jsonConfigPath = join(cwd, ".veilrc.json");
+	if (existsSync(jsonConfigPath)) {
+		try {
+			const content = readFileSync(jsonConfigPath, "utf-8");
+			const parsed = JSON.parse(content) as VeilConfig;
+
+			// Convert string patterns back to RegExp where appropriate
+			const convertMatch = (match: string | RegExp): string | RegExp => {
+				if (typeof match !== "string") return match;
+				return match.startsWith("^") || match.includes("|") ? new RegExp(match, "i") : match;
+			};
+
+			const result: VeilConfig = {};
+
+			if (parsed.fileRules) {
+				result.fileRules = parsed.fileRules.map((rule) => ({
+					...rule,
+					match: convertMatch(rule.match),
+				}));
+			}
+
+			if (parsed.envRules) {
+				result.envRules = parsed.envRules.map((rule) => ({
+					...rule,
+					match: convertMatch(rule.match),
+				}));
+			}
+
+			if (parsed.cliRules) {
+				result.cliRules = parsed.cliRules.map((rule) => ({
+					...rule,
+					match: convertMatch(rule.match),
+				}));
+			}
+
+			return result;
+		} catch {
+			console.error("[veil-mcp] Failed to parse .veilrc.json");
+		}
+	}
+
 	return undefined;
 }
 
@@ -95,12 +137,17 @@ function formatBlockedResponse(reason?: string, alternatives?: string[]): CallTo
 }
 
 /**
+ * Get a fresh Veil instance with current config (hot-reload support)
+ */
+async function getVeil(): Promise<ReturnType<typeof createVeil>> {
+	const config = await loadVeilConfig();
+	return createVeil(config ?? {});
+}
+
+/**
  * Create and start the Veil MCP server
  */
 async function main(): Promise<void> {
-	const config = await loadVeilConfig();
-	const veil = createVeil(config ?? {});
-
 	// Initialize audit logging
 	// biome-ignore lint/complexity/useLiteralKeys: TypeScript requires bracket notation for index signatures
 	const auditLogPath = process.env["VEIL_AUDIT_LOG"] ?? ".veil/audit.log";
@@ -281,7 +328,8 @@ async function main(): Promise<void> {
 					timeout?: number;
 				};
 
-				// Check command against Veil rules
+				// Hot-reload config and check command against Veil rules
+				const veil = await getVeil();
 				const result = veil.checkCommand(command);
 
 				if (!result.ok) {
@@ -340,6 +388,7 @@ async function main(): Promise<void> {
 			case "get_env": {
 				const { name: envName } = args as { name: string };
 
+				const veil = await getVeil();
 				const result = veil.getEnv(envName);
 
 				if (!result.ok) {
@@ -380,6 +429,7 @@ async function main(): Promise<void> {
 			case "check_command": {
 				const { command } = args as { command: string };
 
+				const veil = await getVeil();
 				const result = veil.checkCommand(command);
 
 				if (!result.ok) {
@@ -423,6 +473,7 @@ async function main(): Promise<void> {
 			case "check_env": {
 				const { name: envName } = args as { name: string };
 
+				const veil = await getVeil();
 				const result = veil.getEnv(envName);
 
 				if (!result.ok) {
@@ -468,6 +519,7 @@ async function main(): Promise<void> {
 				};
 				const resolvedPath = resolve(process.cwd(), filePath);
 
+				const veil = await getVeil();
 				const result = veil.checkFile(resolvedPath);
 
 				if (!result.ok) {
@@ -512,7 +564,8 @@ async function main(): Promise<void> {
 				const { path: filePath } = args as { path: string };
 				const resolvedPath = resolve(process.cwd(), filePath);
 
-				// Check file against Veil rules
+				// Hot-reload config and check file against Veil rules
+				const veil = await getVeil();
 				const result = veil.checkFile(resolvedPath);
 
 				if (!result.ok) {
@@ -571,7 +624,8 @@ async function main(): Promise<void> {
 				const { path: filePath, content } = args as { path: string; content: string };
 				const resolvedPath = resolve(process.cwd(), filePath);
 
-				// Check file against Veil rules
+				// Hot-reload config and check file against Veil rules
+				const veil = await getVeil();
 				const result = veil.checkFile(resolvedPath);
 
 				if (!result.ok) {
@@ -674,12 +728,7 @@ async function main(): Promise<void> {
 	await server.connect(transport);
 
 	// Log to stderr (stdout is reserved for MCP protocol)
-	console.error("[veil-mcp] Server started");
-	if (config) {
-		console.error("[veil-mcp] Loaded config from workspace");
-	} else {
-		console.error("[veil-mcp] No config found, using permissive defaults");
-	}
+	console.error("[veil-mcp] Server started (hot-reload enabled)");
 }
 
 export { main as startMcpServer };

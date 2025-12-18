@@ -82,15 +82,15 @@ Add to `.vscode/mcp.json` for AI tool call interception:
 
 ### MCP Tools
 
-| Tool | Description |
-|------|-------------|
-| `run_command` | Execute commands with Veil validation |
-| `check_command` | Pre-flight check without executing |
-| `get_env` | Get env vars with masking/blocking |
-| `check_file` | Check if file access is allowed |
-| `read_file` | Read files with Veil validation |
-| `write_file` | Write files with Veil validation |
-| `get_audit_log` | View audit trail of all operations |
+| Tool            | Description                           |
+| --------------- | ------------------------------------- |
+| `run_command`   | Execute commands with Veil validation |
+| `check_command` | Pre-flight check without executing    |
+| `get_env`       | Get env vars with masking/blocking    |
+| `check_file`    | Check if file access is allowed       |
+| `read_file`     | Read files with Veil validation       |
+| `write_file`    | Write files with Veil validation      |
+| `get_audit_log` | View audit trail of all operations    |
 
 ### Audit Logging
 
@@ -105,25 +105,25 @@ VEIL_AUDIT_FORMAT=text          # 'text' or 'json'
 
 ## CLI Commands
 
-| Command | Description |
-|---------|-------------|
-| `veil install` | Add shell wrapper (AI-only by default) |
-| `veil install --force` | Protect ALL terminals |
-| `veil uninstall` | Remove shell wrapper |
-| `veil init` | Create config with preset |
-| `veil check <target>` | Test if something is blocked |
-| `veil mcp` | Start MCP server |
+| Command                | Description                            |
+| ---------------------- | -------------------------------------- |
+| `veil install`         | Add shell wrapper (AI-only by default) |
+| `veil install --force` | Protect ALL terminals                  |
+| `veil uninstall`       | Remove shell wrapper                   |
+| `veil init`            | Create config with preset              |
+| `veil check <target>`  | Test if something is blocked           |
+| `veil mcp`             | Start MCP server                       |
 
 ---
 
 ## Documentation
 
-| Guide | Description |
-|-------|-------------|
-| [Setup Guide](./docs/setup-guide.md) | Complete installation instructions |
-| [CLI Reference](./docs/cli-reference.md) | All commands and options |
-| [API Reference](./docs/api-reference.md) | TypeScript API docs |
-| [Presets & Rules](./docs/presets-and-rules.md) | Rule configuration |
+| Guide                                          | Description                        |
+| ---------------------------------------------- | ---------------------------------- |
+| [Setup Guide](./docs/setup-guide.md)           | Complete installation instructions |
+| [CLI Reference](./docs/cli-reference.md)       | All commands and options           |
+| [API Reference](./docs/api-reference.md)       | TypeScript API docs                |
+| [Presets & Rules](./docs/presets-and-rules.md) | Rule configuration                 |
 
 ---
 
