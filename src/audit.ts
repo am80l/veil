@@ -4,6 +4,7 @@
  * Enhanced audit trail with event emitters and storage adapters
  */
 
+import type { WriteStream } from "node:fs";
 import type { InterceptRecord, RuleAction } from "./types";
 
 /**
@@ -224,9 +225,13 @@ export class AuditManager {
 		};
 
 		// Emit to specific listeners
-		this.listeners.get(eventType)?.forEach((listener) => { listener(event); });
+		this.listeners.get(eventType)?.forEach((listener) => {
+			listener(event);
+		});
 		// Emit to wildcard listeners
-		this.listeners.get("*")?.forEach((listener) => { listener(event); });
+		this.listeners.get("*")?.forEach((listener) => {
+			listener(event);
+		});
 	}
 
 	private actionToEventType(action: RuleAction): AuditEventType {
@@ -303,4 +308,104 @@ export function createConsoleStorageAdapter(): AuditStorageAdapter {
 			return memory.query(criteria);
 		},
 	};
+}
+
+/**
+ * File-based storage adapter for persistent audit logging
+ *
+ * Writes audit records to a file with timestamps for review.
+ * Useful for tracking AI command attempts over time.
+ *
+ * @example
+ * ```ts
+ * import { FileStorageAdapter } from '@squadzero/veil';
+ *
+ * const adapter = new FileStorageAdapter({
+ *   logPath: '.veil/audit.log',
+ *   format: 'json', // or 'text'
+ * });
+ * ```
+ */
+export class FileStorageAdapter implements AuditStorageAdapter {
+	private logPath: string;
+	private format: "json" | "text";
+	private memory: MemoryStorageAdapter;
+	private writeStream: WriteStream | null = null;
+
+	constructor(options: { logPath?: string; format?: "json" | "text" } = {}) {
+		this.logPath = options.logPath ?? ".veil/audit.log";
+		this.format = options.format ?? "text";
+		this.memory = new MemoryStorageAdapter();
+	}
+
+	private async ensureWriteStream(): Promise<WriteStream> {
+		if (this.writeStream) {
+			return this.writeStream;
+		}
+
+		const fs = await import("node:fs");
+		const path = await import("node:path");
+
+		// Ensure directory exists
+		const dir = path.dirname(this.logPath);
+		if (!fs.existsSync(dir)) {
+			fs.mkdirSync(dir, { recursive: true });
+		}
+
+		this.writeStream = fs.createWriteStream(this.logPath, { flags: "a" });
+		return this.writeStream;
+	}
+
+	async store(record: InterceptRecord): Promise<void> {
+		this.memory.store(record);
+
+		const stream = await this.ensureWriteStream();
+		const timestamp = new Date(record.timestamp).toISOString();
+
+		let line: string;
+		if (this.format === "json") {
+			line = `${JSON.stringify({ ...record, isoTimestamp: timestamp })}\n`;
+		} else {
+			const status = record.action === "allow" ? "ALLOWED" : "BLOCKED";
+			line = `[${timestamp}] ${status}: ${record.type} "${record.target}" (${record.policy})\n`;
+		}
+
+		stream.write(line);
+	}
+
+	getAll(): InterceptRecord[] {
+		return this.memory.getAll();
+	}
+
+	clear(): void {
+		this.memory.clear();
+		// Optionally truncate the file
+	}
+
+	query(criteria: AuditQueryCriteria): InterceptRecord[] {
+		return this.memory.query(criteria);
+	}
+
+	/**
+	 * Close the write stream
+	 */
+	close(): void {
+		if (this.writeStream) {
+			this.writeStream.end();
+			this.writeStream = null;
+		}
+	}
+}
+
+/**
+ * Create a file-based audit logger
+ *
+ * @param logPath - Path to the log file (default: .veil/audit.log)
+ * @param format - Output format: 'text' for human-readable, 'json' for structured (default: text)
+ */
+export function createFileStorageAdapter(
+	logPath = ".veil/audit.log",
+	format: "json" | "text" = "text",
+): FileStorageAdapter {
+	return new FileStorageAdapter({ logPath, format });
 }

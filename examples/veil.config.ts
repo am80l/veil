@@ -90,6 +90,21 @@ const config: VeilConfig = {
 			action: "deny",
 			reason: "Production env files are restricted",
 		},
+		{
+			match: /\.dev\.vars$/,
+			action: "deny",
+			reason: "Cloudflare secrets file is restricted",
+		},
+		{
+			match: /wrangler\.toml$/,
+			action: "deny",
+			reason: "Wrangler config is protected from modification",
+		},
+		{
+			match: /\.git\//,
+			action: "deny",
+			reason: "Git internals are not accessible",
+		},
 
 		// Allow common files
 		{

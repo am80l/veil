@@ -10,7 +10,8 @@
 
 - 🛡️ **Block dangerous commands** - Prevent `rm -rf /`, `wrangler deploy`, etc.
 - 🔒 **Protect secrets** - Mask or deny access to API keys and tokens
-- 📁 **Hide sensitive files** - Block `.env`, `secrets/`, etc.
+- 📁 **Hide sensitive files** - Block reading/writing `.env`, `secrets/`, etc.
+- 📝 **Audit logging** - Track all AI command attempts for review
 - 💡 **Guide the AI** - Provide safe alternatives when blocking
 
 ---
@@ -77,6 +78,27 @@ Add to `.vscode/mcp.json` for AI tool call interception:
     }
   }
 }
+```
+
+### MCP Tools
+
+| Tool | Description |
+|------|-------------|
+| `run_command` | Execute commands with Veil validation |
+| `check_command` | Pre-flight check without executing |
+| `get_env` | Get env vars with masking/blocking |
+| `check_file` | Check if file access is allowed |
+| `read_file` | Read files with Veil validation |
+| `write_file` | Write files with Veil validation |
+| `get_audit_log` | View audit trail of all operations |
+
+### Audit Logging
+
+Set environment variables to configure audit logging:
+
+```bash
+VEIL_AUDIT_LOG=.veil/audit.log  # Log file path (default)
+VEIL_AUDIT_FORMAT=text          # 'text' or 'json'
 ```
 
 ---

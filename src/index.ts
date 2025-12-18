@@ -64,7 +64,9 @@ export type {
 export {
 	AuditManager,
 	MemoryStorageAdapter,
+	FileStorageAdapter,
 	createConsoleStorageAdapter,
+	createFileStorageAdapter,
 } from "./audit";
 export type {
 	AuditEvent,

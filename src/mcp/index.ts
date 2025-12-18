@@ -13,8 +13,8 @@
  */
 
 import { exec } from "node:child_process";
-import { existsSync } from "node:fs";
-import { join, resolve } from "node:path";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { dirname, join, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 import { promisify } from "node:util";
 import { Server } from "@modelcontextprotocol/sdk/server/index.js";
@@ -24,6 +24,7 @@ import {
 	type CallToolResult,
 	ListToolsRequestSchema,
 } from "@modelcontextprotocol/sdk/types.js";
+import { AuditManager, FileStorageAdapter } from "../audit.js";
 import type { VeilConfig } from "../types.js";
 import { createVeil } from "../veil.js";
 
@@ -99,6 +100,14 @@ function formatBlockedResponse(reason?: string, alternatives?: string[]): CallTo
 async function main(): Promise<void> {
 	const config = await loadVeilConfig();
 	const veil = createVeil(config ?? {});
+
+	// Initialize audit logging
+	// biome-ignore lint/complexity/useLiteralKeys: TypeScript requires bracket notation for index signatures
+	const auditLogPath = process.env["VEIL_AUDIT_LOG"] ?? ".veil/audit.log";
+	// biome-ignore lint/complexity/useLiteralKeys: TypeScript requires bracket notation for index signatures
+	const auditFormat = (process.env["VEIL_AUDIT_FORMAT"] ?? "text") as "json" | "text";
+	const auditAdapter = new FileStorageAdapter({ logPath: auditLogPath, format: auditFormat });
+	const audit = new AuditManager(auditAdapter);
 
 	// eslint-disable-next-line @typescript-eslint/no-deprecated -- Server is the correct low-level API for custom tool handlers
 	const server = new Server(
@@ -178,6 +187,80 @@ async function main(): Promise<void> {
 						required: ["name"],
 					},
 				},
+				{
+					name: "check_file",
+					description:
+						"Check if a file path would be allowed by Veil security rules without reading it. Returns whether read/write access would be permitted.",
+					inputSchema: {
+						type: "object",
+						properties: {
+							path: {
+								type: "string",
+								description: "The file path to check",
+							},
+							operation: {
+								type: "string",
+								enum: ["read", "write"],
+								description: "The operation to check (read or write). Default: read",
+							},
+						},
+						required: ["path"],
+					},
+				},
+				{
+					name: "read_file",
+					description:
+						"Read a file's contents. Access is validated against Veil security rules. Sensitive files may be blocked.",
+					inputSchema: {
+						type: "object",
+						properties: {
+							path: {
+								type: "string",
+								description: "The file path to read",
+							},
+						},
+						required: ["path"],
+					},
+				},
+				{
+					name: "write_file",
+					description:
+						"Write content to a file. Access is validated against Veil security rules. Protected files may be blocked.",
+					inputSchema: {
+						type: "object",
+						properties: {
+							path: {
+								type: "string",
+								description: "The file path to write to",
+							},
+							content: {
+								type: "string",
+								description: "The content to write to the file",
+							},
+						},
+						required: ["path", "content"],
+					},
+				},
+				{
+					name: "get_audit_log",
+					description:
+						"Retrieve the audit log of all Veil-validated operations in this session. Useful for reviewing what commands/files were accessed.",
+					inputSchema: {
+						type: "object",
+						properties: {
+							limit: {
+								type: "number",
+								description: "Maximum number of records to return (default: 50)",
+							},
+							type: {
+								type: "string",
+								enum: ["cli", "env", "file"],
+								description: "Filter by operation type",
+							},
+						},
+						required: [],
+					},
+				},
 			],
 		};
 	});
@@ -202,8 +285,18 @@ async function main(): Promise<void> {
 				const result = veil.checkCommand(command);
 
 				if (!result.ok) {
+					// Log blocked command
+					audit.record("cli", command, "deny", result.reason ?? "command_denied_by_policy");
 					return formatBlockedResponse(result.reason, result.safeAlternatives);
 				}
+
+				// Log allowed command
+				audit.record(
+					"cli",
+					command,
+					result.command !== command ? "rewrite" : "allow",
+					"command_allowed",
+				);
 
 				// Use potentially rewritten command
 				const finalCommand = result.command ?? command;
@@ -250,16 +343,28 @@ async function main(): Promise<void> {
 				const result = veil.getEnv(envName);
 
 				if (!result.ok) {
+					// Log blocked env access
+					const blockedResult = result as { ok: false; reason?: string };
+					audit.record("env", envName, "deny", blockedResult.reason ?? "env_denied_by_policy");
 					return {
 						content: [
 							{
 								type: "text",
-								text: `Environment variable "${envName}" is not accessible.\n\nReason: ${result.reason || "Blocked by Veil security policy"}`,
+								text: `Environment variable "${envName}" is not accessible.\n\nReason: ${blockedResult.reason ?? "Blocked by Veil security policy"}`,
 							},
 						],
 						isError: true,
 					};
 				}
+
+				// Log allowed env access (check if masked)
+				const wasMasked = result.value !== process.env[envName];
+				audit.record(
+					"env",
+					envName,
+					wasMasked ? "mask" : "allow",
+					wasMasked ? "env_masked" : "env_allowed",
+				);
 
 				let output = "";
 				if (result.context) {
@@ -347,6 +452,206 @@ async function main(): Promise<void> {
 									accessible: true,
 									masked: result.value !== process.env[envName],
 									context: result.context,
+								},
+								null,
+								2,
+							),
+						},
+					],
+				};
+			}
+
+			case "check_file": {
+				const { path: filePath, operation = "read" } = args as {
+					path: string;
+					operation?: "read" | "write";
+				};
+				const resolvedPath = resolve(process.cwd(), filePath);
+
+				const result = veil.checkFile(resolvedPath);
+
+				if (!result.ok) {
+					return {
+						content: [
+							{
+								type: "text",
+								text: JSON.stringify(
+									{
+										allowed: false,
+										path: resolvedPath,
+										operation,
+										reason: result.reason,
+									},
+									null,
+									2,
+								),
+							},
+						],
+					};
+				}
+
+				return {
+					content: [
+						{
+							type: "text",
+							text: JSON.stringify(
+								{
+									allowed: true,
+									path: resolvedPath,
+									operation,
+								},
+								null,
+								2,
+							),
+						},
+					],
+				};
+			}
+
+			case "read_file": {
+				const { path: filePath } = args as { path: string };
+				const resolvedPath = resolve(process.cwd(), filePath);
+
+				// Check file against Veil rules
+				const result = veil.checkFile(resolvedPath);
+
+				if (!result.ok) {
+					const blockedResult = result as { ok: false; reason?: string };
+					audit.record(
+						"file",
+						resolvedPath,
+						"deny",
+						blockedResult.reason ?? "file_hidden_by_policy",
+					);
+					return {
+						content: [
+							{
+								type: "text",
+								text: `File "${resolvedPath}" is not accessible.\n\nReason: ${blockedResult.reason ?? "Blocked by Veil security policy"}`,
+							},
+						],
+						isError: true,
+					};
+				}
+
+				// Check if file exists
+				if (!existsSync(resolvedPath)) {
+					return {
+						content: [
+							{
+								type: "text",
+								text: `File not found: ${resolvedPath}`,
+							},
+						],
+						isError: true,
+					};
+				}
+
+				try {
+					const content = readFileSync(resolvedPath, "utf-8");
+					audit.record("file", resolvedPath, "allow", "file_read_allowed");
+					return {
+						content: [{ type: "text", text: content }],
+					};
+				} catch (error) {
+					const err = error as Error;
+					return {
+						content: [
+							{
+								type: "text",
+								text: `Failed to read file: ${err.message}`,
+							},
+						],
+						isError: true,
+					};
+				}
+			}
+
+			case "write_file": {
+				const { path: filePath, content } = args as { path: string; content: string };
+				const resolvedPath = resolve(process.cwd(), filePath);
+
+				// Check file against Veil rules
+				const result = veil.checkFile(resolvedPath);
+
+				if (!result.ok) {
+					const blockedResult = result as { ok: false; reason?: string };
+					audit.record(
+						"file",
+						resolvedPath,
+						"deny",
+						blockedResult.reason ?? "file_hidden_by_policy",
+					);
+					return {
+						content: [
+							{
+								type: "text",
+								text: `Cannot write to "${resolvedPath}".\n\nReason: ${blockedResult.reason ?? "Blocked by Veil security policy"}`,
+							},
+						],
+						isError: true,
+					};
+				}
+
+				try {
+					// Ensure directory exists
+					const dir = dirname(resolvedPath);
+					if (!existsSync(dir)) {
+						mkdirSync(dir, { recursive: true });
+					}
+
+					writeFileSync(resolvedPath, content, "utf-8");
+					audit.record("file", resolvedPath, "allow", "file_write_allowed");
+					return {
+						content: [
+							{
+								type: "text",
+								text: `Successfully wrote ${content.length} bytes to ${resolvedPath}`,
+							},
+						],
+					};
+				} catch (error) {
+					const err = error as Error;
+					return {
+						content: [
+							{
+								type: "text",
+								text: `Failed to write file: ${err.message}`,
+							},
+						],
+						isError: true,
+					};
+				}
+			}
+
+			case "get_audit_log": {
+				const { limit = 50, type: filterType } = args as {
+					limit?: number;
+					type?: "cli" | "env" | "file";
+				};
+
+				const queryCriteria = filterType ? { type: filterType, limit } : { limit };
+				const records = audit.query(queryCriteria);
+
+				// Handle both sync and async results
+				const resolvedRecords = await Promise.resolve(records);
+
+				const formatted = resolvedRecords.map((r) => ({
+					timestamp: new Date(r.timestamp).toISOString(),
+					type: r.type,
+					action: r.action,
+					target: r.target,
+					policy: r.policy,
+				}));
+
+				return {
+					content: [
+						{
+							type: "text",
+							text: JSON.stringify(
+								{
+									count: formatted.length,
+									records: formatted,
 								},
 								null,
 								2,
