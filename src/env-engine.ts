@@ -55,13 +55,18 @@ export function createEnvEngine(rules: EnvRule[], injectors?: VeilInjectors): En
 				const allowResult: EnvResult = { ok: true, value: realValue };
 				// Surface context from passive mode rules
 				if (rule.reason) {
-					(allowResult).context = rule.reason;
+					allowResult.context = rule.reason;
 				}
 				return allowResult;
 			}
 
 			case "deny":
-				return createEnvBlockedResult(key, "env_denied_by_policy", policyRef, action);
+				return createEnvBlockedResult(
+					key,
+					rule.reason ?? "env_denied_by_policy",
+					policyRef,
+					action,
+				);
 
 			case "mask":
 				if (realValue === undefined) {
@@ -142,7 +147,7 @@ export function createEnvEngine(rules: EnvRule[], injectors?: VeilInjectors): En
  */
 function createEnvBlockedResult(
 	target: string,
-	reason: "env_denied_by_policy" | "env_masked_by_policy",
+	reason: string,
 	policy: string,
 	action: "deny" | "mask",
 ): VeilBlocked {
