@@ -174,17 +174,61 @@ When Veil blocks an operation, it returns a structured response:
 | `getInterceptedCalls()`         | Get audit log of blocked operations          |
 | `clearInterceptedCalls()`       | Clear the audit log                          |
 
-## Rules API Reference
+## MCP Tools API
 
-| Function                                 | Description                                |
-| ---------------------------------------- | ------------------------------------------ |
-| `registerPlatformRules()`                | Register all built-in rules (call once)    |
-| `recommended()`                          | Get recommended rules for current platform |
-| `strict()`                               | Get strict rules for current platform      |
-| `fromPacks(...packs)`                    | Combine multiple rule packs                |
-| `fromCategory(category)`                 | Get all rules in a category                |
-| `buildConfigFromRules(rules, platform?)` | Convert rules to VeilConfig                |
-| `extendRules(base, overrides)`           | Extend a config with overrides             |
-| `listRules()`                            | List all available rule IDs                |
-| `listPacks()`                            | List all available pack names              |
-| `getRule(id)`                            | Get rule details by ID                     |
+The MCP server exposes tools that AI agents can call. Each tool supports dynamic config loading based on the working directory.
+
+### Tool Parameters
+
+#### `run_command`
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `command` | string | ✅ | The shell command to execute |
+| `cwd` | string | ❌ | Working directory. Config is loaded from this path. |
+| `timeout` | number | ❌ | Timeout in ms (default: 30000) |
+
+#### `check_command`
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `command` | string | ✅ | The command to check |
+| `cwd` | string | ❌ | Directory to load config from |
+
+#### `get_env` / `check_env`
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `name` | string | ✅ | Environment variable name |
+| `cwd` | string | ❌ | Directory to load config from |
+
+#### `check_file` / `read_file` / `write_file`
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `path` | string | ✅ | File path to check/read/write |
+| `operation` | string | ❌ | For check_file: "read" or "write" |
+| `content` | string | ✅* | For write_file only |
+
+*Config is automatically loaded from the file's parent directory.
+
+### Config Resolution
+
+When `cwd` is provided, Veil walks up the directory tree to find a config file:
+
+```
+/opt/apps/my-project/src/utils/
+  ↓ (walks up)
+/opt/apps/my-project/src/
+  ↓
+/opt/apps/my-project/veil.config.ts  ← Found! Uses this config
+```
+
+Supported config files (in order):
+1. `veil.config.ts`
+2. `veil.config.js`
+3. `veil.config.mjs`
+4. `.veilrc.ts`
+5. `.veilrc.js`
+6. `.veilrc.json`
+

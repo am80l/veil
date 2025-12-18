@@ -99,6 +99,15 @@ No VS Code settings required - all terminals are protected.
 
 The MCP server provides tools that VS Code/Claude/Cursor can use with built-in veil enforcement.
 
+### Dynamic Config Loading
+
+**New in v0.6.0:** Veil dynamically loads `veil.config.ts` based on the `cwd` parameter passed to each tool. This enables per-project rules in poly-repo workspaces.
+
+When a tool is invoked:
+1. Veil walks up from the `cwd` (or file path) to find `veil.config.ts`
+2. Loads and applies that project's specific rules
+3. Falls back to no rules if no config is found
+
 ### VS Code (Workspace Level)
 
 Create `.vscode/mcp.json`:
@@ -110,11 +119,47 @@ Create `.vscode/mcp.json`:
       "type": "stdio",
       "command": "npx",
       "args": ["@squadzero/veil", "mcp"],
-      "cwd": "/path/to/your/project"
+      "cwd": "/path/to/workspace-root"
     }
   }
 }
 ```
+
+**Note:** The `cwd` in mcp.json sets the MCP server's starting directory, but tools will load config from their own `cwd` parameter or file path.
+
+### Poly-Repo Setup
+
+For workspaces with multiple projects, set `cwd` to the workspace root:
+
+```json
+{
+  "servers": {
+    "veil": {
+      "type": "stdio",
+      "command": "npx",
+      "args": ["@squadzero/veil", "mcp"],
+      "cwd": "/opt/apps"
+    }
+  }
+}
+```
+
+Then create `veil.config.ts` in each project that needs rules:
+
+```
+/opt/apps/
+├── .vscode/mcp.json           # Single MCP config for workspace
+├── project-a/
+│   └── veil.config.ts         # Rules for project-a
+├── project-b/
+│   └── veil.config.ts         # Rules for project-b
+└── project-c/                 # No config = no restrictions
+```
+
+When running commands:
+- `run_command` with `cwd="/opt/apps/project-a"` → uses project-a's rules
+- `run_command` with `cwd="/opt/apps/project-b"` → uses project-b's rules
+- `check_file` with path in project-a → uses project-a's rules
 
 ### Claude Desktop
 
@@ -133,12 +178,16 @@ Edit `~/Library/Application Support/Claude/claude_desktop_config.json`:
 
 ### MCP Tools Provided
 
-| Tool | Description |
-|------|-------------|
-| `run_command` | Execute shell command (with veil filtering) |
-| `get_env` | Get environment variable (with veil filtering) |
-| `check_command` | Check if command is allowed |
-| `check_env` | Check if env var is accessible |
+| Tool | Description | `cwd` Support |
+|------|-------------|---------------|
+| `run_command` | Execute shell command (with veil filtering) | ✅ Uses cwd parameter |
+| `check_command` | Check if command is allowed | ✅ Uses cwd parameter |
+| `get_env` | Get environment variable (with veil filtering) | ✅ Uses cwd parameter |
+| `check_env` | Check if env var is accessible | ✅ Uses cwd parameter |
+| `check_file` | Check if file path is allowed | ✅ Derives from file path |
+| `read_file` | Read file with veil validation | ✅ Derives from file path |
+| `write_file` | Write file with veil validation | ✅ Derives from file path |
+| `get_audit_log` | View audit trail | ❌ No project context |
 
 ---
 

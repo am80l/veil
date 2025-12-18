@@ -74,10 +74,27 @@ Add to `.vscode/mcp.json` for AI tool call interception:
       "type": "stdio",
       "command": "npx",
       "args": ["@squadzero/veil", "mcp"],
-      "cwd": "/path/to/project"
+      "cwd": "/path/to/workspace"
     }
   }
 }
+```
+
+### Dynamic Config Loading
+
+Veil automatically loads project-specific rules based on the working directory:
+
+- When `cwd` is passed to a tool, Veil walks up from that directory to find `veil.config.ts`
+- For file operations, rules are loaded from the file's parent directory
+- Each project in a poly-repo can have its own `veil.config.ts`
+
+```
+/workspace
+├── .vscode/mcp.json          # Single MCP config
+├── project-a/
+│   └── veil.config.ts        # Rules for project-a
+└── project-b/
+    └── veil.config.ts        # Rules for project-b
 ```
 
 ### MCP Tools
@@ -87,10 +104,13 @@ Add to `.vscode/mcp.json` for AI tool call interception:
 | `run_command`   | Execute commands with Veil validation |
 | `check_command` | Pre-flight check without executing    |
 | `get_env`       | Get env vars with masking/blocking    |
+| `check_env`     | Check if env var is accessible        |
 | `check_file`    | Check if file access is allowed       |
 | `read_file`     | Read files with Veil validation       |
 | `write_file`    | Write files with Veil validation      |
 | `get_audit_log` | View audit trail of all operations    |
+
+Most tools accept an optional `cwd` parameter to specify which project's rules to use.
 
 ### Audit Logging
 

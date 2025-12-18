@@ -139,6 +139,21 @@ veil mcp --http --host 0.0.0.0 # Custom host
 | `--port <port>` | Port for HTTP server (default: 3500) |
 | `--host <host>` | Host for HTTP server (default: 0.0.0.0) |
 
+**Dynamic Config Loading (v0.6.0+):**
+
+The MCP server supports per-project config loading. When tools are invoked with a `cwd` parameter, Veil walks up from that directory to find `veil.config.ts`.
+
+This enables poly-repo setups where each project has its own rules:
+
+```
+/workspace/
+├── project-a/veil.config.ts   # Rules for project-a
+├── project-b/veil.config.ts   # Rules for project-b
+└── .vscode/mcp.json           # Single MCP config
+```
+
+For file operations (`check_file`, `read_file`, `write_file`), config is loaded from the file's parent directory.
+
 ---
 
 ### `veil audit`
@@ -159,4 +174,6 @@ veil audit
 |----------|-------------|
 | `VEIL_ENABLED=1` | Enable veil-wrap checking |
 | `VEIL_FORCE=1` | Force checking even without VEIL_ENABLED |
-| `VEIL_CONFIG=<path>` | Path to config file |
+| `VEIL_CONFIG=<path>` | Path to config file (overrides auto-discovery) |
+| `VEIL_AUDIT_LOG=<path>` | Path to audit log file (default: `.veil/audit.log`) |
+| `VEIL_AUDIT_FORMAT=<fmt>` | Audit format: `text` or `json` (default: `text`) |
