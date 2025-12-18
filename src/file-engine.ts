@@ -7,7 +7,6 @@
 import { evaluateRules } from "./matching";
 import type {
 	BlockDetails,
-	BlockReason,
 	DirectoryResult,
 	FileEngine,
 	FileResult,
@@ -50,7 +49,7 @@ export function createFileEngine(rules: FileRule[], injectors?: VeilInjectors): 
 				return { ok: true, value: true };
 
 			case "deny":
-				return createBlockedResult(path, "file_hidden_by_policy", policyRef, action);
+				return createBlockedResult(path, rule.reason ?? "file_hidden_by_policy", policyRef, action);
 
 			case "mask":
 				return createBlockedResult(
@@ -98,7 +97,12 @@ export function createFileEngine(rules: FileRule[], injectors?: VeilInjectors): 
 				return { ok: true, value: true };
 
 			case "deny":
-				return createBlockedResult(path, "directory_hidden_by_policy", policyRef, action);
+				return createBlockedResult(
+					path,
+					rule.reason ?? "directory_hidden_by_policy",
+					policyRef,
+					action,
+				);
 
 			case "mask":
 				return createBlockedResult(
@@ -148,7 +152,7 @@ export function createFileEngine(rules: FileRule[], injectors?: VeilInjectors): 
  */
 function createBlockedResult(
 	target: string,
-	reason: BlockReason,
+	reason: string,
 	policy: string,
 	action: "deny" | "mask" | "rewrite",
 	replacement?: string,
