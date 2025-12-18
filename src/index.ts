@@ -81,6 +81,7 @@ export type {
 	// Configuration
 	VeilConfig,
 	VeilInjectors,
+	BypassProtectionOptions,
 	// Rules
 	BaseRule,
 	FileRule,
@@ -111,6 +112,8 @@ export type {
 
 // Utilities (for advanced users)
 export { matchesPattern, findMatchingRule, evaluateRules, applyMask } from "./matching";
+export { normalizeCommand, isWrappedCommand, describeNormalization } from "./normalize";
+export type { NormalizeOptions } from "./normalize";
 
 // Presets and helpers
 export {

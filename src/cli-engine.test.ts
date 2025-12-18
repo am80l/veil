@@ -103,4 +103,136 @@ describe("cli-engine", () => {
 			expect(engine.transform("ls -la")).toBe("ls -la");
 		});
 	});
+
+	describe("bypass protection (enabled by default)", () => {
+		const rules: CliRule[] = [
+			{ match: /^git push/, action: "deny", reason: "Use CI/CD" },
+			{ match: /^wrangler deploy/, action: "deny", reason: "Use appkit deploy" },
+			{ match: /^rm -rf/, action: "deny", reason: "Dangerous" },
+		];
+
+		const engine = createCliEngine(rules);
+
+		describe("shell wrapper bypass", () => {
+			it("blocks bash -c wrapped commands", () => {
+				const result = engine.checkCommand('bash -c "git push origin main"');
+				expect(result.ok).toBe(false);
+				expect(result.reason).toContain("Use CI/CD");
+				expect(result.reason).toContain("Bypass attempt detected");
+			});
+
+			it("blocks sh -c wrapped commands", () => {
+				const result = engine.checkCommand("sh -c 'wrangler deploy'");
+				expect(result.ok).toBe(false);
+				expect(result.reason).toContain("Use appkit deploy");
+			});
+
+			it("blocks nested shell wrappers", () => {
+				const result = engine.checkCommand("bash -c \"sh -c 'git push'\"");
+				expect(result.ok).toBe(false);
+				expect(result.reason).toContain("Use CI/CD");
+			});
+		});
+
+		describe("absolute path bypass", () => {
+			it("blocks /usr/bin/git push", () => {
+				const result = engine.checkCommand("/usr/bin/git push origin main");
+				expect(result.ok).toBe(false);
+				expect(result.reason).toContain("Use CI/CD");
+				expect(result.reason).toContain("Bypass attempt detected");
+			});
+
+			it("blocks /bin/rm -rf", () => {
+				const result = engine.checkCommand("/bin/rm -rf /");
+				expect(result.ok).toBe(false);
+				expect(result.reason).toContain("Dangerous");
+			});
+		});
+
+		describe("eval bypass", () => {
+			it("blocks eval wrapped commands", () => {
+				const result = engine.checkCommand('eval "git push"');
+				expect(result.ok).toBe(false);
+				expect(result.reason).toContain("Use CI/CD");
+			});
+		});
+
+		describe("package runner bypass", () => {
+			it("blocks npx wrangler deploy", () => {
+				const result = engine.checkCommand("npx wrangler deploy");
+				expect(result.ok).toBe(false);
+				expect(result.reason).toContain("Use appkit deploy");
+			});
+
+			it("blocks pnpx wrangler deploy", () => {
+				const result = engine.checkCommand("pnpx wrangler deploy");
+				expect(result.ok).toBe(false);
+			});
+		});
+
+		describe("combined bypass attempts", () => {
+			it("blocks bash -c with absolute path", () => {
+				const result = engine.checkCommand('bash -c "/usr/bin/git push"');
+				expect(result.ok).toBe(false);
+				expect(result.reason).toContain("Use CI/CD");
+			});
+
+			it("blocks all layers of obfuscation", () => {
+				const result = engine.checkCommand('sh -c "/usr/bin/npx wrangler deploy"');
+				expect(result.ok).toBe(false);
+				expect(result.reason).toContain("Use appkit deploy");
+			});
+		});
+	});
+
+	describe("bypass protection disabled", () => {
+		const rules: CliRule[] = [{ match: /^git push/, action: "deny", reason: "Use CI/CD" }];
+
+		const engine = createCliEngine(rules, { bypassProtection: false });
+
+		it("does not normalize commands when disabled", () => {
+			// Shell wrapper should NOT be caught
+			const result = engine.checkCommand('bash -c "git push"');
+			expect(result.ok).toBe(true);
+		});
+
+		it("does not strip absolute paths when disabled", () => {
+			const result = engine.checkCommand("/usr/bin/git push");
+			expect(result.ok).toBe(true);
+		});
+	});
+
+	describe("bypass protection custom options", () => {
+		const rules: CliRule[] = [
+			{ match: /^git push/, action: "deny" },
+			{ match: /^wrangler deploy/, action: "deny" },
+		];
+
+		it("respects stripPaths: false", () => {
+			const engine = createCliEngine(rules, {
+				bypassProtection: { stripPaths: false },
+			});
+			// Absolute path should NOT be caught
+			const result = engine.checkCommand("/usr/bin/git push");
+			expect(result.ok).toBe(true);
+		});
+
+		it("respects unwrapShells: false", () => {
+			const engine = createCliEngine(rules, {
+				bypassProtection: { unwrapShells: false },
+			});
+			// Shell wrapper should NOT be caught
+			const result = engine.checkCommand('bash -c "git push"');
+			expect(result.ok).toBe(true);
+		});
+
+		it("respects stripPackageRunners: false", () => {
+			const engine = createCliEngine(rules, {
+				bypassProtection: { stripPackageRunners: false },
+			});
+			// npx prefix should NOT be caught
+			const result = engine.checkCommand("npx wrangler deploy");
+			expect(result.ok).toBe(true);
+		});
+	});
 });

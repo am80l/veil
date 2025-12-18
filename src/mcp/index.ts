@@ -38,9 +38,41 @@ import { createVeil } from "../veil.js";
 const execAsync = promisify(exec);
 
 /**
- * Load veil config from the current working directory or specified path
+ * Find the project root by walking up from a path looking for veil config files
  */
-async function loadVeilConfig(): Promise<VeilConfig | undefined> {
+function findProjectRoot(startPath: string): string {
+	const configFiles = [
+		"veil.config.ts",
+		"veil.config.js",
+		"veil.config.mjs",
+		".veilrc.ts",
+		".veilrc.js",
+		".veilrc.json",
+	];
+
+	let currentDir = startPath;
+	const root = dirname(startPath) === startPath ? startPath : "/";
+
+	while (currentDir !== root) {
+		for (const configFile of configFiles) {
+			if (existsSync(join(currentDir, configFile))) {
+				return currentDir;
+			}
+		}
+		const parentDir = dirname(currentDir);
+		if (parentDir === currentDir) break;
+		currentDir = parentDir;
+	}
+
+	// Fall back to start path if no config found
+	return startPath;
+}
+
+/**
+ * Load veil config from the specified directory or current working directory
+ * @param cwd - Optional directory to load config from. If not provided, uses process.cwd()
+ */
+async function loadVeilConfig(cwd?: string): Promise<VeilConfig | undefined> {
 	const configPaths = [
 		"veil.config.ts",
 		"veil.config.js",
@@ -49,12 +81,12 @@ async function loadVeilConfig(): Promise<VeilConfig | undefined> {
 		".veilrc.js",
 	];
 
-	const cwd = process.cwd();
+	const searchDir = cwd ?? process.cwd();
 	// biome-ignore lint/complexity/useLiteralKeys: TypeScript requires bracket notation for index signatures
 	const configPath = process.env["VEIL_CONFIG"];
 
 	if (configPath) {
-		const fullPath = resolve(cwd, configPath);
+		const fullPath = resolve(searchDir, configPath);
 		if (existsSync(fullPath)) {
 			try {
 				const loaded = (await import(pathToFileURL(fullPath).href)) as {
@@ -68,7 +100,7 @@ async function loadVeilConfig(): Promise<VeilConfig | undefined> {
 	}
 
 	for (const configFile of configPaths) {
-		const fullPath = join(cwd, configFile);
+		const fullPath = join(searchDir, configFile);
 		if (existsSync(fullPath)) {
 			try {
 				const loaded = (await import(pathToFileURL(fullPath).href)) as {
@@ -82,7 +114,7 @@ async function loadVeilConfig(): Promise<VeilConfig | undefined> {
 	}
 
 	// Try JSON config as fallback
-	const jsonConfigPath = join(cwd, ".veilrc.json");
+	const jsonConfigPath = join(searchDir, ".veilrc.json");
 	if (existsSync(jsonConfigPath)) {
 		try {
 			const content = readFileSync(jsonConfigPath, "utf-8");
@@ -103,6 +135,11 @@ async function loadVeilConfig(): Promise<VeilConfig | undefined> {
 			};
 
 			const result: VeilConfig = {};
+
+			// Preserve bypassProtection setting (defaults to true in createVeil)
+			if (parsed.bypassProtection !== undefined) {
+				result.bypassProtection = parsed.bypassProtection;
+			}
 
 			if (parsed.fileRules) {
 				result.fileRules = parsed.fileRules.map((rule) => ({
@@ -162,10 +199,13 @@ function formatBlockedResponse(reason?: string, alternatives?: string[]): CallTo
 }
 
 /**
- * Get a fresh Veil instance with current config (hot-reload support)
+ * Get a fresh Veil instance with config loaded from the specified directory (hot-reload support)
+ * @param cwd - Optional directory to load config from. Will search up for veil config files.
  */
-async function getVeil(): Promise<ReturnType<typeof createVeil>> {
-	const config = await loadVeilConfig();
+async function getVeil(cwd?: string): Promise<ReturnType<typeof createVeil>> {
+	// If cwd provided, find the project root containing a veil config
+	const configDir = cwd ? findProjectRoot(cwd) : undefined;
+	const config = await loadVeilConfig(configDir);
 	return createVeil(config ?? {});
 }
 
@@ -225,6 +265,11 @@ async function main(): Promise<void> {
 								type: "string",
 								description: "The name of the environment variable",
 							},
+							cwd: {
+								type: "string",
+								description:
+									"Working directory to load Veil config from (optional). Uses project-specific rules.",
+							},
 						},
 						required: ["name"],
 					},
@@ -240,6 +285,11 @@ async function main(): Promise<void> {
 								type: "string",
 								description: "The shell command to check",
 							},
+							cwd: {
+								type: "string",
+								description:
+									"Working directory to load Veil config from (optional). Uses project-specific rules.",
+							},
 						},
 						required: ["command"],
 					},
@@ -254,6 +304,11 @@ async function main(): Promise<void> {
 							name: {
 								type: "string",
 								description: "The name of the environment variable to check",
+							},
+							cwd: {
+								type: "string",
+								description:
+									"Working directory to load Veil config from (optional). Uses project-specific rules.",
 							},
 						},
 						required: ["name"],
@@ -353,8 +408,8 @@ async function main(): Promise<void> {
 					timeout?: number;
 				};
 
-				// Hot-reload config and check command against Veil rules
-				const veil = await getVeil();
+				// Hot-reload config from cwd and check command against Veil rules
+				const veil = await getVeil(cwd);
 				const result = veil.checkCommand(command);
 
 				if (!result.ok) {
@@ -411,9 +466,9 @@ async function main(): Promise<void> {
 			}
 
 			case "get_env": {
-				const { name: envName } = args as { name: string };
+				const { name: envName, cwd } = args as { name: string; cwd?: string };
 
-				const veil = await getVeil();
+				const veil = await getVeil(cwd);
 				const result = veil.getEnv(envName);
 
 				if (!result.ok) {
@@ -452,9 +507,9 @@ async function main(): Promise<void> {
 			}
 
 			case "check_command": {
-				const { command } = args as { command: string };
+				const { command, cwd } = args as { command: string; cwd?: string };
 
-				const veil = await getVeil();
+				const veil = await getVeil(cwd);
 				const result = veil.checkCommand(command);
 
 				if (!result.ok) {
@@ -496,9 +551,9 @@ async function main(): Promise<void> {
 			}
 
 			case "check_env": {
-				const { name: envName } = args as { name: string };
+				const { name: envName, cwd } = args as { name: string; cwd?: string };
 
-				const veil = await getVeil();
+				const veil = await getVeil(cwd);
 				const result = veil.getEnv(envName);
 
 				if (!result.ok) {
@@ -544,7 +599,8 @@ async function main(): Promise<void> {
 				};
 				const resolvedPath = resolve(process.cwd(), filePath);
 
-				const veil = await getVeil();
+				// Load config from the file's directory
+				const veil = await getVeil(dirname(resolvedPath));
 				const result = veil.checkFile(resolvedPath);
 
 				if (!result.ok) {
@@ -589,8 +645,8 @@ async function main(): Promise<void> {
 				const { path: filePath } = args as { path: string };
 				const resolvedPath = resolve(process.cwd(), filePath);
 
-				// Hot-reload config and check file against Veil rules
-				const veil = await getVeil();
+				// Hot-reload config from file's directory and check file against Veil rules
+				const veil = await getVeil(dirname(resolvedPath));
 				const result = veil.checkFile(resolvedPath);
 
 				if (!result.ok) {
@@ -649,8 +705,8 @@ async function main(): Promise<void> {
 				const { path: filePath, content } = args as { path: string; content: string };
 				const resolvedPath = resolve(process.cwd(), filePath);
 
-				// Hot-reload config and check file against Veil rules
-				const veil = await getVeil();
+				// Hot-reload config from file's directory and check file against Veil rules
+				const veil = await getVeil(dirname(resolvedPath));
 				const result = veil.checkFile(resolvedPath);
 
 				if (!result.ok) {

@@ -83,7 +83,10 @@ export function createVeil(config: VeilConfig = {}): Veil {
 	// Create engines
 	const fileEngine = createFileEngine(fileRules, injectors);
 	const envEngine = createEnvEngine(envRules, injectors);
-	const cliEngine = createCliEngine(cliRules);
+	const cliEngine = createCliEngine(
+		cliRules,
+		config.bypassProtection !== undefined ? { bypassProtection: config.bypassProtection } : {},
+	);
 
 	// Intercept log
 	const interceptedCalls: InterceptRecord[] = [];

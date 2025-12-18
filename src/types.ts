@@ -54,6 +54,22 @@ export interface CliRule extends BaseRule {
 // ============================================================================
 
 /**
+ * Options for centralized bypass protection.
+ * When enabled, commands are normalized before rule matching to catch
+ * common evasion techniques like subshells, absolute paths, and eval.
+ */
+export interface BypassProtectionOptions {
+	/** Strip absolute paths from commands (e.g., /usr/bin/git → git). Default: true */
+	stripPaths?: boolean;
+	/** Unwrap subshell wrappers (e.g., bash -c "git push" → git push). Default: true */
+	unwrapShells?: boolean;
+	/** Unwrap eval commands (e.g., eval "git push" → git push). Default: true */
+	unwrapEval?: boolean;
+	/** Strip npx/pnpx/yarn prefixes (e.g., npx wrangler → wrangler). Default: true */
+	stripPackageRunners?: boolean;
+}
+
+/**
  * Veil configuration options
  */
 export interface VeilConfig {
@@ -65,6 +81,13 @@ export interface VeilConfig {
 	cliRules?: CliRule[];
 	/** Custom context injectors */
 	injectors?: VeilInjectors;
+	/**
+	 * Enable centralized bypass protection for CLI rules.
+	 * When true (default) or an options object, commands are normalized
+	 * before matching to catch subshells, absolute paths, eval, etc.
+	 * Set to false to disable normalization entirely.
+	 */
+	bypassProtection?: boolean | BypassProtectionOptions;
 }
 
 /**

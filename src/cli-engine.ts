@@ -5,76 +5,141 @@
  */
 
 import { evaluateRules } from "./matching";
-import type { CliEngine, CliResult, CliRule } from "./types";
+import { type NormalizeOptions, describeNormalization, normalizeCommand } from "./normalize";
+import type { BypassProtectionOptions, CliEngine, CliResult, CliRule } from "./types";
+
+/**
+ * Options for creating a CLI engine
+ */
+export interface CliEngineOptions {
+	/**
+	 * Enable bypass protection via command normalization.
+	 * - true: Enable all normalization (default)
+	 * - false: Disable normalization
+	 * - object: Fine-grained control over normalization options
+	 */
+	bypassProtection?: boolean | BypassProtectionOptions;
+}
+
+/**
+ * Convert bypassProtection config to NormalizeOptions
+ */
+function getBypassOptions(
+	config: boolean | BypassProtectionOptions | undefined,
+): NormalizeOptions | null {
+	// Default: enabled with all options
+	if (config === undefined || config === true) {
+		return {
+			stripPaths: true,
+			unwrapShells: true,
+			unwrapEval: true,
+			stripPackageRunners: true,
+		};
+	}
+
+	// Explicitly disabled
+	if (config === false) {
+		return null;
+	}
+
+	// Custom options
+	return {
+		stripPaths: config.stripPaths ?? true,
+		unwrapShells: config.unwrapShells ?? true,
+		unwrapEval: config.unwrapEval ?? true,
+		stripPackageRunners: config.stripPackageRunners ?? true,
+	};
+}
 
 /**
  * Create a CLI rules engine
  */
-export function createCliEngine(rules: CliRule[]): CliEngine {
+export function createCliEngine(rules: CliRule[], options: CliEngineOptions = {}): CliEngine {
+	const bypassOptions = getBypassOptions(options.bypassProtection);
+
 	/**
 	 * Check and potentially transform a CLI command
 	 */
 	function checkCommand(command: string): CliResult {
-		const result = evaluateRules(command, rules);
+		// Get command variants to check (original + normalized versions)
+		const variants = bypassOptions ? normalizeCommand(command, bypassOptions) : [command.trim()];
+
+		// Check each variant against rules - first deny wins
+		for (const variant of variants) {
+			const result = evaluateRules(variant, rules);
+
+			if (result) {
+				const { action, rule } = result;
+
+				// Track if this was caught via normalization
+				const wasNormalized = variant !== command.trim();
+				const normalizationNote = wasNormalized ? describeNormalization(command, variant) : null;
+
+				switch (action) {
+					case "allow": {
+						const allowResult: CliResult = {
+							ok: true,
+							command,
+						};
+						if (rule.reason) {
+							allowResult.context = rule.reason;
+						}
+						return allowResult;
+					}
+
+					case "deny": {
+						let reason = rule.reason ?? "command_denied_by_policy";
+						// Add bypass detection note
+						if (normalizationNote) {
+							reason = `${reason}\n\n⚠️ Bypass attempt detected: ${normalizationNote}`;
+						}
+
+						const denyResult: CliResult = {
+							ok: false,
+							blocked: true,
+							type: "cli",
+							reason,
+							command,
+						};
+						if (rule.safeAlternatives) {
+							denyResult.safeAlternatives = rule.safeAlternatives;
+						}
+						return denyResult;
+					}
+
+					case "rewrite":
+						return {
+							ok: true,
+							command: rule.replacement ?? command,
+						};
+
+					case "mask": {
+						let reason = rule.reason ?? "command_denied_by_policy";
+						if (normalizationNote) {
+							reason = `${reason}\n\n⚠️ Bypass attempt detected: ${normalizationNote}`;
+						}
+
+						const maskResult: CliResult = {
+							ok: false,
+							blocked: true,
+							type: "cli",
+							reason,
+							command,
+						};
+						if (rule.safeAlternatives) {
+							maskResult.safeAlternatives = rule.safeAlternatives;
+						}
+						return maskResult;
+					}
+				}
+			}
+		}
 
 		// No matching rule = allow by default
-		if (!result) {
-			return {
-				ok: true,
-				command,
-			};
-		}
-
-		const { action, rule } = result;
-
-		switch (action) {
-			case "allow": {
-				const allowResult: CliResult = {
-					ok: true,
-					command,
-				};
-				// Surface context from passive mode rules
-				if (rule.reason) {
-					allowResult.context = rule.reason;
-				}
-				return allowResult;
-			}
-
-			case "deny": {
-				const denyResult: CliResult = {
-					ok: false,
-					blocked: true,
-					type: "cli",
-					reason: rule.reason ?? "command_denied_by_policy",
-					command,
-				};
-				if (rule.safeAlternatives) {
-					denyResult.safeAlternatives = rule.safeAlternatives;
-				}
-				return denyResult;
-			}
-
-			case "rewrite":
-				return {
-					ok: true,
-					command: rule.replacement ?? command,
-				};
-
-			case "mask": {
-				// For CLI, mask is treated like deny with a placeholder
-				const maskResult: CliResult = {
-					ok: false,
-					blocked: true,
-					type: "cli",
-					reason: rule.reason ?? "command_denied_by_policy",
-					command,
-				};
-				if (rule.safeAlternatives) {
-					maskResult.safeAlternatives = rule.safeAlternatives;
-				}
-				return maskResult;
-			}
-		}
+		return {
+			ok: true,
+			command,
+		};
 	}
 
 	/**
