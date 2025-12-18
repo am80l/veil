@@ -110,7 +110,14 @@ function loadConfig(): VeilConfig | null {
 	}
 }
 
-function saveConfig(config: VeilConfig, filePath: string): void {
+function saveConfig(config: VeilConfig, filePath: string, presetName?: string): void {
+	// If a preset name is provided, use extends for a minimal config
+	if (presetName) {
+		const minimalConfig = { extends: presetName };
+		writeFileSync(filePath, `${JSON.stringify(minimalConfig, null, 2)}\n`);
+		return;
+	}
+
 	// Convert RegExp to string for JSON serialization
 	const serializableConfig = {
 		fileRules: config.fileRules?.map((rule) => ({
@@ -223,7 +230,8 @@ program
 			return;
 		}
 
-		saveConfig(preset, configPath);
+		// Pass preset name to generate minimal config with extends
+		saveConfig(preset, configPath, options.preset);
 		console.log(colorize(`✓ Created ${CONFIG_FILENAME} with "${options.preset}" preset`, "green"));
 		console.log(colorize(`  ${configPath}`, "gray"));
 		console.log();
