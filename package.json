@@ -1,6 +1,6 @@
 {
   "name": "@squadzero/veil",
-  "version": "0.2.0",
+  "version": "0.3.5",
   "type": "module",
   "description": "A TypeScript library for selective context access, visibility control & safety enforcement for LLMs",
   "main": "dist/index.cjs",
@@ -41,7 +41,8 @@
   },
   "bin": {
     "veil": "dist/cli/index.cjs",
-    "veil-mcp": "dist/mcp/index.cjs"
+    "veil-mcp": "dist/mcp/index.cjs",
+    "veil-wrap": "dist/cli/wrap.cjs"
   },
   "keywords": [
     "llm",

@@ -661,17 +661,234 @@ program
 	});
 
 // ─────────────────────────────────────────────────────────────────────────────
+// install - Add shell wrapper to .zshrc/.bashrc
+// ─────────────────────────────────────────────────────────────────────────────
+
+const SHELL_MARKER_START = "# >>> veil shell wrapper >>>";
+const SHELL_MARKER_END = "# <<< veil shell wrapper <<<";
+
+function getShellWrapper(commands: string[], forceMode: boolean): string {
+	const wrapperFunctions = commands
+		.map(
+			(cmd) => `${cmd}() {
+  if command -v veil-wrap >/dev/null 2>&1; then
+    veil-wrap ${cmd} "$@"
+  else
+    command ${cmd} "$@"
+  fi
+}`,
+		)
+		.join("\n\n");
+
+	const modeComment = forceMode
+		? "# Mode: FORCE - applies to ALL terminals (humans + AI)"
+		: "# Mode: AI-only - only activates when VEIL_ENABLED=1 (set in VS Code)";
+
+	return `${SHELL_MARKER_START}
+# Veil intercepts these commands to enforce security policies
+# See: https://github.com/Squad-Zero/veil
+${modeComment}
+${wrapperFunctions}
+${SHELL_MARKER_END}`;
+}
+
+function getShellConfigPaths(): string[] {
+	// biome-ignore lint/complexity/useLiteralKeys: TypeScript requires bracket notation for index signatures
+	const home = process.env["HOME"] ?? process.env["USERPROFILE"] ?? "";
+	return [join(home, ".zshrc"), join(home, ".bashrc"), join(home, ".bash_profile")];
+}
+
+function detectCurrentShell(): string {
+	// biome-ignore lint/complexity/useLiteralKeys: TypeScript requires bracket notation for index signatures
+	const shell = process.env["SHELL"] ?? "";
+	if (shell.includes("zsh")) return "zsh";
+	if (shell.includes("bash")) return "bash";
+	return "unknown";
+}
+
+function getDefaultConfigPath(): string {
+	// biome-ignore lint/complexity/useLiteralKeys: TypeScript requires bracket notation for index signatures
+	const home = process.env["HOME"] ?? process.env["USERPROFILE"] ?? "";
+	const shell = detectCurrentShell();
+	if (shell === "zsh") return join(home, ".zshrc");
+	return join(home, ".bashrc");
+}
+
+program
+	.command("install")
+	.description("Add shell wrappers to intercept commands (e.g., wrangler)")
+	.option("-s, --shell <path>", "Path to shell config file (auto-detected if not specified)")
+	.option("-c, --commands <commands>", "Comma-separated commands to wrap", "wrangler")
+	.option("-f, --force", "Apply to ALL terminals (humans + AI). Default is AI-only.")
+	.option("--dry-run", "Show what would be added without modifying files")
+	.action(
+		(options: { shell?: string; commands?: string; force?: boolean; dryRun?: boolean }): void => {
+			const commands = (options.commands ?? "wrangler").split(",").map((c) => c.trim());
+			const shellConfig = options.shell ?? getDefaultConfigPath();
+			const forceMode = options.force ?? false;
+			const wrapper = getShellWrapper(commands, forceMode);
+
+			if (options.dryRun) {
+				console.log(colorize("─ Dry Run: Shell Wrapper ─", "cyan"));
+				console.log();
+				console.log(`Would add to: ${colorize(shellConfig, "yellow")}`);
+				console.log(`Mode: ${colorize(forceMode ? "FORCE (all terminals)" : "AI-only", "yellow")}`);
+				console.log();
+				console.log(colorize("Content:", "gray"));
+				console.log(wrapper);
+				return;
+			}
+
+			// Check if file exists
+			if (!existsSync(shellConfig)) {
+				console.error(colorize(`Shell config not found: ${shellConfig}`, "red"));
+				console.error("Use --shell to specify the correct path");
+				process.exit(1);
+			}
+
+			// Read current content
+			const content = readFileSync(shellConfig, "utf-8");
+
+			// Check if already installed
+			if (content.includes(SHELL_MARKER_START)) {
+				console.log(colorize("Veil shell wrapper already installed!", "yellow"));
+				console.log(`Location: ${shellConfig}`);
+				console.log();
+				console.log("To update, run:");
+				console.log(colorize("  veil uninstall && veil install", "cyan"));
+				return;
+			}
+
+			// Append wrapper
+			const newContent = `${content.trimEnd()}\n\n${wrapper}\n`;
+			writeFileSync(shellConfig, newContent);
+
+			console.log(colorize("✓ Veil shell wrapper installed!", "green"));
+			console.log();
+			console.log(`Location: ${colorize(shellConfig, "cyan")}`);
+			console.log(`Wrapped commands: ${colorize(commands.join(", "), "yellow")}`);
+			console.log(`Mode: ${colorize(forceMode ? "FORCE (all terminals)" : "AI-only", "yellow")}`);
+			console.log();
+
+			if (!forceMode) {
+				console.log(colorize("─ VS Code Setup (required for AI-only mode) ─", "cyan"));
+				console.log();
+				console.log("Add to your VS Code settings.json:");
+				console.log();
+				console.log(
+					colorize('  "terminal.integrated.env.linux": { "VEIL_ENABLED": "1" },', "gray"),
+				);
+				console.log(colorize('  "terminal.integrated.env.osx": { "VEIL_ENABLED": "1" },', "gray"));
+				console.log(
+					colorize('  "terminal.integrated.env.windows": { "VEIL_ENABLED": "1" }', "gray"),
+				);
+				console.log();
+				console.log("This enables veil ONLY in VS Code terminals (where AI runs).");
+				console.log("Human terminals outside VS Code are unaffected.");
+				console.log();
+			}
+
+			console.log("To activate, run:");
+			console.log(colorize(`  source ${shellConfig}`, "cyan"));
+			console.log();
+			console.log("Or open a new terminal.");
+		},
+	);
+
+// ─────────────────────────────────────────────────────────────────────────────
+// uninstall - Remove shell wrapper from .zshrc/.bashrc
+// ─────────────────────────────────────────────────────────────────────────────
+
+program
+	.command("uninstall")
+	.description("Remove shell wrappers from shell config")
+	.option("-s, --shell <path>", "Path to shell config file (auto-detected if not specified)")
+	.option("-a, --all", "Remove from all detected shell configs")
+	.option("--dry-run", "Show what would be removed without modifying files")
+	.action((options: { shell?: string; all?: boolean; dryRun?: boolean }): void => {
+		const configs = options.all
+			? getShellConfigPaths().filter(existsSync)
+			: [options.shell ?? getDefaultConfigPath()];
+
+		let removedAny = false;
+
+		for (const shellConfig of configs) {
+			if (!existsSync(shellConfig)) {
+				if (!options.all) {
+					console.error(colorize(`Shell config not found: ${shellConfig}`, "red"));
+					process.exit(1);
+				}
+				continue;
+			}
+
+			const content = readFileSync(shellConfig, "utf-8");
+
+			if (!content.includes(SHELL_MARKER_START)) {
+				if (!options.all) {
+					console.log(colorize("Veil shell wrapper not found in config.", "yellow"));
+					console.log(`Checked: ${shellConfig}`);
+				}
+				continue;
+			}
+
+			// Remove wrapper block
+			const startIdx = content.indexOf(SHELL_MARKER_START);
+			const endIdx = content.indexOf(SHELL_MARKER_END);
+
+			if (startIdx === -1 || endIdx === -1) {
+				console.error(colorize(`Malformed wrapper block in ${shellConfig}`, "red"));
+				continue;
+			}
+
+			const before = content.slice(0, startIdx).trimEnd();
+			const after = content.slice(endIdx + SHELL_MARKER_END.length).trimStart();
+			const newContent = before + (after ? `\n\n${after}` : "\n");
+
+			if (options.dryRun) {
+				console.log(colorize(`Would remove from: ${shellConfig}`, "cyan"));
+				removedAny = true;
+				continue;
+			}
+
+			writeFileSync(shellConfig, newContent);
+			console.log(colorize(`✓ Removed from: ${shellConfig}`, "green"));
+			removedAny = true;
+		}
+
+		if (removedAny && !options.dryRun) {
+			console.log();
+			console.log("To apply changes, run:");
+			console.log(colorize(`  source ${configs[0]}`, "cyan"));
+			console.log();
+			console.log("Or open a new terminal.");
+		} else if (!removedAny) {
+			console.log(colorize("No veil shell wrappers found to remove.", "yellow"));
+		}
+	});
+
+// ─────────────────────────────────────────────────────────────────────────────
 // mcp - Start the MCP server for IDE integration
 // ─────────────────────────────────────────────────────────────────────────────
 
 program
 	.command("mcp")
 	.description("Start the Model Context Protocol server for IDE integration")
-	.action(async (): Promise<void> => {
-		// Dynamically import the MCP server to avoid loading dependencies when not needed
+	.option("--http", "Use HTTP transport instead of stdio (for remote development)")
+	.option("--port <port>", "Port for HTTP server (default: 3500)", "3500")
+	.option("--host <host>", "Host for HTTP server (default: 0.0.0.0)", "0.0.0.0")
+	.action(async (options: { http?: boolean; port?: string; host?: string }): Promise<void> => {
 		try {
-			const { startMcpServer } = await import("../mcp/index.js");
-			await startMcpServer();
+			if (options.http) {
+				// HTTP transport for remote development
+				const { startHttpServer } = await import("../mcp/http-server.js");
+				const port = Number.parseInt(options.port ?? "3500", 10);
+				const host = options.host ?? "0.0.0.0";
+				await startHttpServer(port, host);
+			} else {
+				// Standard stdio transport
+				const { startMcpServer } = await import("../mcp/index.js");
+				await startMcpServer();
+			}
 		} catch (error) {
 			console.error(colorize("Failed to start MCP server:", "red"));
 			console.error(error);
